@@ -27,7 +27,8 @@ const DebtDetailModal = ({ isOpen, onClose, debt }) => {
                 return {
                     ...d,
                     balance: Math.max(0, d.balance - monthlyInstallment),
-                    monthsLeft: Math.max(0, d.monthsLeft - 1)
+                    monthsLeft: Math.max(0, d.monthsLeft - 1),
+                    nextDueMonthOffset: (d.nextDueMonthOffset || 0) + 1
                 };
             }
             return d;

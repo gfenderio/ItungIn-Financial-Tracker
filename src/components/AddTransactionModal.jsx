@@ -13,8 +13,8 @@ const AddTransactionModal = ({ isOpen, onClose }) => {
 
     const expenseCategories = [
         { name: 'Food', icon: 'restaurant' },
-        { name: 'Utilities', icon: 'bolt' }, // Swapped Debt Payment for Utilities
         { name: 'Shopping', icon: 'shopping_bag' },
+        { name: 'Travel', icon: 'flight' },
         { name: 'Others', icon: 'category' },
     ];
 

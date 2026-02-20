@@ -60,12 +60,23 @@ export const AppProvider = ({ children }) => {
             const saved = localStorage.getItem('debts');
             const parsed = saved ? JSON.parse(saved) : null;
             return Array.isArray(parsed) ? parsed : [
-                { id: 1, title: 'Bank Loan', subtitle: 'Mortgage Refinance', balance: 4500000, total: 10000000, color: 'blue', icon: 'account_balance', dueDays: 5 },
-                { id: 2, title: 'Friend - Alex', subtitle: 'Personal Loan', balance: 50000, total: 200000, color: 'orange', icon: 'person', dueDays: 1 },
-                { id: 3, title: 'Credit Card', subtitle: 'Visa Platinum', balance: 1200000, total: 1200000, color: 'purple', icon: 'credit_card', dueDays: 12 },
+                { id: 1, title: 'Bank Loan', subtitle: 'Mortgage Refinance', balance: 4500000, total: 10000000, color: 'blue', icon: 'account_balance', dueDays: 5, nextDueMonthOffset: 0 },
+                { id: 2, title: 'Friend - Alex', subtitle: 'Personal Loan', balance: 50000, total: 200000, color: 'orange', icon: 'person', dueDays: 1, nextDueMonthOffset: 0 },
+                { id: 3, title: 'Credit Card', subtitle: 'Visa Platinum', balance: 1200000, total: 1200000, color: 'purple', icon: 'credit_card', dueDays: 12, nextDueMonthOffset: 0 },
             ];
         } catch (e) {
             console.error("Error loading debts:", e);
+            return [];
+        }
+    });
+
+    const [subscriptions, setSubscriptions] = useState(() => {
+        try {
+            const saved = localStorage.getItem('subscriptions');
+            const parsed = saved ? JSON.parse(saved) : null;
+            return Array.isArray(parsed) ? parsed : [];
+        } catch (e) {
+            console.error("Error loading subscriptions:", e);
             return [];
         }
     });
@@ -131,6 +142,14 @@ export const AppProvider = ({ children }) => {
             console.error("Failed to save accounts:", error);
         }
     }, [accounts]);
+
+    useEffect(() => {
+        try {
+            localStorage.setItem('subscriptions', JSON.stringify(subscriptions));
+        } catch (error) {
+            console.error("Failed to save subscriptions:", error);
+        }
+    }, [subscriptions]);
 
     // Debt Payment Due Date Watcher
     useEffect(() => {
@@ -224,6 +243,7 @@ export const AppProvider = ({ children }) => {
         setTransactions([]);
         setDebts([]);
         setAccounts([]);
+        setSubscriptions([]);
         setNotifications([]);
     };
 
@@ -266,6 +286,8 @@ export const AppProvider = ({ children }) => {
             markAllNotificationsAsRead,
             resetData,
             setDebts,
+            subscriptions,
+            setSubscriptions,
             alertConfig,
             showAlert,
             hideAlert

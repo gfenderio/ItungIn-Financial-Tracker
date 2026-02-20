@@ -108,6 +108,10 @@ const Layout = () => {
                         <span className="material-symbols-outlined">account_balance</span>
                         <span className="text-[10px] font-medium">Debt</span>
                     </NavLink>
+                    <NavLink to="/subscriptions" className={({ isActive }) => `flex flex-col items-center gap-1 transition-all duration-200 ${isActive ? 'text-primary scale-110' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}>
+                        <span className="material-symbols-outlined">event_repeat</span>
+                        <span className="text-[10px] font-medium">Bills</span>
+                    </NavLink>
                     <NavLink to="/profile" className={({ isActive }) => `flex flex-col items-center gap-1 transition-all duration-200 ${isActive ? 'text-primary scale-110' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}>
                         <span className="material-symbols-outlined">person</span>
                         <span className="text-[10px] font-medium">Profile</span>

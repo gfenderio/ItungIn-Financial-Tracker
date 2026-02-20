@@ -294,23 +294,23 @@ const Dashboard = () => {
                     )}
 
                     <div className="flex flex-col md:flex-row items-center gap-8">
-                        <div className="donut-chart flex-shrink-0 relative w-32 h-32 flex items-center justify-center">
-                            {/* SVG Donut implementation for dynamic proportional segments */}
-                            <svg viewBox="0 0 100 100" className="absolute inset-0 w-full h-full -rotate-90">
-                                {/* Background circle */}
-                                <circle cx="50" cy="50" r="40" fill="transparent" stroke="currentColor" strokeWidth="12" className="text-slate-100 dark:text-slate-700" />
-
+                        <div className="donut-chart flex-shrink-0 relative w-40 h-40 flex items-center justify-center">
+                            {/* Pure SVG Animated Donut Implementation */}
+                            <svg viewBox="0 0 100 100" className="absolute inset-0 w-full h-full -rotate-90 drop-shadow-md">
                                 {/* Dynamic Segments */}
                                 {(() => {
+                                    if (sortedCategories.length === 0) return null;
+
                                     let cumulativePercent = 0;
+                                    const circumference = 2 * Math.PI * 40; // ~251.2
+
                                     return sortedCategories.map(([cat, amount], idx) => {
                                         const percent = totalCategoriesAmount > 0 ? (amount / totalCategoriesAmount) : 0;
-                                        const circumference = 2 * Math.PI * 40;
                                         const strokeDasharray = `${percent * circumference} ${circumference}`;
                                         const strokeDashoffset = -(cumulativePercent * circumference);
                                         cumulativePercent += percent;
 
-                                        // Lookup hex colors since SVG needs explicit colors instead of Tailwind classes
+                                        // Lookup hex colors for SVG
                                         let strokeColor = '#6366f1'; // fallback indigo
                                         if (categoryType === 'Spending') {
                                             const reds = ['#dc2626', '#ef4444', '#f87171', '#fca5a5'];
@@ -328,24 +328,31 @@ const Dashboard = () => {
                                         }
 
                                         return (
-                                            <circle
-                                                key={cat}
-                                                cx="50"
-                                                cy="50"
-                                                r="40"
-                                                fill="transparent"
-                                                stroke={strokeColor}
-                                                strokeWidth="12"
-                                                strokeDasharray={strokeDasharray}
-                                                strokeDashoffset={strokeDashoffset}
-                                                strokeLinecap="round"
-                                                className="transition-all duration-1000 ease-out origin-center"
-                                                style={{ animation: 'dash 1s ease-out forwards' }}
-                                            />
+                                            <g key={cat} className="group cursor-pointer">
+                                                <circle
+                                                    cx="50"
+                                                    cy="50"
+                                                    r="40"
+                                                    fill="transparent"
+                                                    stroke={strokeColor}
+                                                    className="transition-all duration-700 ease-out origin-center stroke-[12px] group-hover:stroke-[16px] group-hover:opacity-100 opacity-90"
+                                                    strokeDasharray={strokeDasharray}
+                                                    strokeDashoffset={strokeDashoffset}
+                                                    strokeLinecap="round"
+                                                    style={{ animation: 'dash 1.2s cubic-bezier(0.4, 0, 0.2, 1) forwards' }}
+                                                />
+                                            </g>
                                         );
                                     });
                                 })()}
                             </svg>
+
+                            {/* Empty State Overlay */}
+                            {sortedCategories.length === 0 && (
+                                <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-300 dark:text-slate-600">
+                                    <span className="material-symbols-outlined text-4xl opacity-50">pie_chart</span>
+                                </div>
+                            )}
                             <div className="relative z-10 text-center flex flex-col items-center justify-center">
                                 <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-0.5">{language === 'id' ? 'Total' : 'Total'}</span>
                                 <span className="font-bold text-xs sm:text-sm text-slate-900 dark:text-slate-100">{formatMoney(totalCategoriesAmount)}</span>

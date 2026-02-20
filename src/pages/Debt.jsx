@@ -3,11 +3,12 @@ import { useApp } from '../contexts/AppContext';
 import DebtDetailModal from '../components/DebtDetailModal';
 
 const Debt = () => {
-    const { debts, setDebts, addTransaction, calculateIncome, language } = useApp();
+    const { debts, setDebts, transactions, language, calculateIncome } = useApp();
     const [filter, setFilter] = useState('All');
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [selectedDebt, setSelectedDebt] = useState(null);
     const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+    const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
 
     // Form states
     const [amount, setAmount] = useState('');
@@ -70,18 +71,57 @@ const Debt = () => {
         setMonthsLeft(12);
     };
 
-    // Calculate next payment day just for UI flair
-    const calculateNextPaymentString = (dueDay) => {
+    // Calculate next payment day checking the offset for future months
+    const calculateNextPaymentString = (debt) => {
         const today = new Date();
-        const currentDay = today.getDate();
-        if (currentDay === dueDay) return "Today";
-        if (currentDay + 1 === dueDay) return "Tomorrow";
-        let daysLeft = dueDay - currentDay;
-        if (daysLeft < 0) {
-            const nextMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
-            daysLeft = (nextMonth - currentDay) + dueDay;
+        const currentMonth = today.getMonth();
+        const currentYear = today.getFullYear();
+
+        const offset = debt.nextDueMonthOffset || 0;
+        let targetMonth = currentMonth + offset;
+        let targetYear = currentYear;
+
+        while (targetMonth > 11) {
+            targetMonth -= 12;
+            targetYear++;
         }
-        return `In ${daysLeft} days`;
+
+        let nextDueDate = new Date(targetYear, targetMonth, debt.dueDays);
+
+        // Handle end-of-month clamping (e.g. Feb 31st becomes Feb 28th)
+        const daysInTargetMonth = new Date(targetYear, targetMonth + 1, 0).getDate();
+        if (debt.dueDays > daysInTargetMonth) {
+            nextDueDate = new Date(targetYear, targetMonth, daysInTargetMonth);
+        }
+
+        // If offset is 0 but the day has already passed this month, technically it's due next month
+        // but we want the UI to still show it's overdue or push to next. We handle logic based on unpaid status.
+        // For simple UI, we just check diff against today
+        if (offset === 0 && today > nextDueDate && today.getDate() > nextDueDate.getDate()) {
+            // Already passed this month and un-offset (likely unpaid and overdue, but for UI sake we show next cycle if they just want to see when it's due)
+            let lateTargetMonth = currentMonth + 1;
+            let lateTargetYear = currentYear;
+            if (lateTargetMonth > 11) { lateTargetMonth = 0; lateTargetYear++; }
+            const lateDaysInMonth = new Date(lateTargetYear, lateTargetMonth + 1, 0).getDate();
+            nextDueDate = new Date(lateTargetYear, lateTargetMonth, Math.min(debt.dueDays, lateDaysInMonth));
+        }
+
+        const diffTime = nextDueDate.getTime() - today.getTime();
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+        if (diffDays === 0) return "Today";
+        if (diffDays === 1) return "Tomorrow";
+
+        if (diffDays < 0) {
+            return `${Math.abs(diffDays)} days overdue`;
+        }
+
+        if (diffDays > 30) {
+            // If it's more than a month out, format nicely
+            return new Intl.DateTimeFormat(language === 'id' ? 'id-ID' : 'en-US', { day: 'numeric', month: 'short' }).format(nextDueDate);
+        }
+
+        return `In ${diffDays} days`;
     };
 
     return (
@@ -196,7 +236,13 @@ const Debt = () => {
                 <section className="space-y-4">
                     <div className="flex items-center justify-between">
                         <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">{language === 'id' ? 'Hutang Aktif' : 'Active Debts'}</h3>
-                        <span className="text-sm text-indigo-600 font-medium">{language === 'id' ? 'Lihat Info' : 'See Insights'}</span>
+                        <button
+                            onClick={() => setIsHistoryModalOpen(true)}
+                            className="text-sm text-indigo-600 font-bold flex items-center gap-1 hover:text-indigo-700 transition-colors"
+                        >
+                            <span className="material-symbols-outlined text-[16px]">history</span>
+                            {language === 'id' ? 'Riwayat' : 'History'}
+                        </button>
                     </div>
 
                     {filteredDebts.length === 0 ? (
@@ -234,8 +280,11 @@ const Debt = () => {
                                         </div>
                                     </div>
                                     <div className="flex flex-col items-end gap-1">
-                                        <span className="bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider">
-                                            {calculateNextPaymentString(debt.dueDays).replace('In', language === 'id' ? 'Dalam' : 'In').replace('days', language === 'id' ? 'hari' : 'days').replace('Today', language === 'id' ? 'Hari ini' : 'Today').replace('Tomorrow', language === 'id' ? 'Besok' : 'Tomorrow')}
+                                        <span className={`text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider ${calculateNextPaymentString(debt).includes('overdue')
+                                            ? 'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300'
+                                            : 'bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300'
+                                            }`}>
+                                            {calculateNextPaymentString(debt).replace('In', language === 'id' ? 'Dalam' : 'In').replace('days overdue', language === 'id' ? 'hr terlambat' : 'days overdue').replace('days', language === 'id' ? 'hari' : 'days').replace('Today', language === 'id' ? 'Hari ini' : 'Today').replace('Tomorrow', language === 'id' ? 'Besok' : 'Tomorrow')}
                                         </span>
                                         {debt.monthsLeft && <span className="text-[10px] text-slate-400">{debt.monthsLeft} {language === 'id' ? 'bln tersisa' : 'mo left'}</span>}
                                     </div>
@@ -271,6 +320,46 @@ const Debt = () => {
                 onClose={() => setIsDetailModalOpen(false)}
                 debt={selectedDebt}
             />
+
+            {/* Debt History Modal */}
+            {isHistoryModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+                    <div className="absolute inset-0 bg-slate-900/40 dark:bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300" onClick={() => setIsHistoryModalOpen(false)}></div>
+                    <div className="relative w-full sm:w-[28rem] bg-slate-50 dark:bg-slate-900 rounded-t-3xl sm:rounded-3xl overflow-hidden shadow-2xl flex flex-col font-display max-h-[85vh] animate-in slide-in-from-bottom-10 sm:slide-in-from-bottom-4 duration-300">
+                        <div className="flex items-center justify-between p-4 bg-white dark:bg-slate-800 border-b border-slate-100 dark:border-slate-800">
+                            <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 flex-1 pl-4 text-center">
+                                {language === 'id' ? 'Riwayat Pembayaran' : 'Payment History'}
+                            </h3>
+                            <button onClick={() => setIsHistoryModalOpen(false)} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 transition-colors">
+                                <span className="material-symbols-outlined border-slate-400">close</span>
+                            </button>
+                        </div>
+                        <div className="flex-1 overflow-y-auto p-4 space-y-3 pb-8">
+                            {transactions.filter(t => t.category === 'Debt').length === 0 ? (
+                                <div className="text-center py-10 text-slate-400">
+                                    <span className="material-symbols-outlined text-4xl mb-2 opacity-50">receipt_long</span>
+                                    <p>{language === 'id' ? 'Belum ada riwayat pembayaran hutang.' : 'No debt payment history yet.'}</p>
+                                </div>
+                            ) : (
+                                transactions.filter(t => t.category === 'Debt').map(t => (
+                                    <div key={t.id} className="bg-white dark:bg-slate-800 p-3 rounded-2xl flex items-center justify-between shadow-sm border border-slate-100 dark:border-slate-700/50">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 text-indigo-500 flex items-center justify-center">
+                                                <span className="material-symbols-outlined">{t.icon || 'payments'}</span>
+                                            </div>
+                                            <div>
+                                                <p className="font-bold text-sm text-slate-900 dark:text-slate-100">{t.title}</p>
+                                                <p className="text-xs text-slate-500">{new Intl.DateTimeFormat(language === 'id' ? 'id-ID' : 'en-US', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(t.date))}</p>
+                                            </div>
+                                        </div>
+                                        <span className="font-bold text-emerald-500 text-sm">{formatMoney(Math.abs(t.amount))}</span>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Add Debt Overlay Form */}
             {isAddModalOpen && (
