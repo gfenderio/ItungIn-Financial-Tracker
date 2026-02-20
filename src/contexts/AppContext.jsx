@@ -6,6 +6,24 @@ export const AppProvider = ({ children }) => {
     // Initialize state from LocalStorage or default values
     const [currency, setCurrency] = useState(() => localStorage.getItem('currency') || 'IDR');
     const [darkMode, setDarkMode] = useState(() => JSON.parse(localStorage.getItem('darkMode')) || false);
+    const [language, setLanguage] = useState(() => localStorage.getItem('language') || 'en');
+
+    // Global Alert State
+    const [alertConfig, setAlertConfig] = useState({ show: false, message: '', type: 'info' });
+
+    const [notifications, setNotifications] = useState(() => {
+        try {
+            const saved = localStorage.getItem('notifications');
+            const parsed = saved ? JSON.parse(saved) : null;
+            return Array.isArray(parsed) ? parsed : [
+                { id: 1, text: "ItungIn v2.0 is live! Check out the new dashboard.", time: "Just now", read: false },
+                { id: 2, text: "Exclusive Offer: Get 50% off Premium", time: "2h ago", read: false },
+                { id: 3, text: "Backup completed successfully", time: "1d ago", read: true },
+            ];
+        } catch (e) {
+            return [];
+        }
+    });
 
     const [accounts, setAccounts] = useState(() => {
         try {
@@ -76,6 +94,22 @@ export const AppProvider = ({ children }) => {
 
     useEffect(() => {
         try {
+            localStorage.setItem('language', language);
+        } catch (error) {
+            console.error("Failed to save language:", error);
+        }
+    }, [language]);
+
+    useEffect(() => {
+        try {
+            localStorage.setItem('notifications', JSON.stringify(notifications));
+        } catch (error) {
+            console.error("Failed to save notifications:", error);
+        }
+    }, [notifications]);
+
+    useEffect(() => {
+        try {
             localStorage.setItem('transactions', JSON.stringify(transactions));
         } catch (error) {
             console.error("Failed to save transactions:", error);
@@ -98,8 +132,99 @@ export const AppProvider = ({ children }) => {
         }
     }, [accounts]);
 
+    // Debt Payment Due Date Watcher
+    useEffect(() => {
+        if (!debts || !transactions) return;
+
+        const now = new Date();
+        const currentMonth = now.getMonth();
+        const currentYear = now.getFullYear();
+
+        setNotifications(prev => {
+            let newNotifs = [...prev];
+            let added = false;
+
+            debts.forEach(debt => {
+                if (debt.balance <= 0) return;
+
+                const dueDay = debt.dueDays;
+                let expectedDueDate = new Date(currentYear, currentMonth, dueDay);
+
+                const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+                if (dueDay > daysInMonth) expectedDueDate = new Date(currentYear, currentMonth, daysInMonth);
+
+                let nextDueDate = expectedDueDate;
+                if (now > expectedDueDate && now.getDate() > expectedDueDate.getDate()) {
+                    nextDueDate = new Date(currentYear, currentMonth + 1, dueDay);
+                    const nextDaysInMonth = new Date(currentYear, currentMonth + 2, 0).getDate();
+                    if (dueDay > nextDaysInMonth) nextDueDate = new Date(currentYear, currentMonth + 1, nextDaysInMonth);
+                }
+
+                const diffTime = nextDueDate - now;
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+                if (diffDays <= 5 && diffDays >= 0) {
+                    const isPaidThisMonth = transactions.some(t => {
+                        if (t.category !== 'Debt') return false;
+                        const tDate = new Date(t.date);
+                        return tDate.getMonth() === nextDueDate.getMonth() &&
+                            tDate.getFullYear() === nextDueDate.getFullYear() &&
+                            t.title.includes(debt.title);
+                    });
+
+                    if (!isPaidThisMonth) {
+                        const notifId = `debt_${debt.id}_${nextDueDate.getMonth()}_${nextDueDate.getFullYear()}`;
+                        if (!newNotifs.some(n => n.id === notifId)) {
+                            newNotifs.unshift({
+                                id: notifId,
+                                text: language === 'id'
+                                    ? `Pengingat: Tagihan "${debt.title}" jatuh tempo dalam ${diffDays} hari.`
+                                    : `Reminder: "${debt.title}" payment is due in ${diffDays} days.`,
+                                time: 'Just now',
+                                read: false
+                            });
+                            added = true;
+                        }
+                    }
+                }
+            });
+
+            return added ? newNotifs : prev;
+        });
+    }, [debts, transactions, language]);
+
     const toggleDarkMode = () => {
         setDarkMode(prev => !prev);
+    };
+
+    const toggleLanguage = () => {
+        setLanguage(prev => prev === 'en' ? 'id' : 'en');
+    };
+
+    const showAlert = (message, type = 'error') => {
+        setAlertConfig({ show: true, message, type });
+        setTimeout(() => {
+            hideAlert();
+        }, 3000); // Auto-hide after 3 seconds
+    };
+
+    const hideAlert = () => {
+        setAlertConfig(prev => ({ ...prev, show: false }));
+    };
+
+    const markNotificationAsRead = (id) => {
+        setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+    };
+
+    const markAllNotificationsAsRead = () => {
+        setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+    };
+
+    const resetData = () => {
+        setTransactions([]);
+        setDebts([]);
+        setAccounts([]);
+        setNotifications([]);
     };
 
     const addTransaction = (transaction) => {
@@ -133,7 +258,17 @@ export const AppProvider = ({ children }) => {
             addAccount,
             calculateBalance,
             calculateIncome,
-            calculateExpenses
+            calculateExpenses,
+            language,
+            toggleLanguage,
+            notifications,
+            markNotificationAsRead,
+            markAllNotificationsAsRead,
+            resetData,
+            setDebts,
+            alertConfig,
+            showAlert,
+            hideAlert
         }}>
             {children}
         </AppContext.Provider>
