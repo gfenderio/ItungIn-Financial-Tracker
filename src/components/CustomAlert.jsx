@@ -6,7 +6,7 @@ const CustomAlert = () => {
 
     if (!alertConfig.show) return null;
 
-    const baseStyles = "fixed top-20 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-3 px-4 py-3 rounded-2xl shadow-xl border animate-in slide-in-from-top-4 fade-in duration-300 w-[90%] max-w-sm";
+    const baseStyles = "fixed top-20 left-1/2 -translate-x-1/2 z-[200] flex items-center gap-3 px-4 py-3 rounded-2xl shadow-xl border animate-in slide-in-from-top-4 fade-in duration-300 w-[90%] max-w-sm";
 
     const typeStyles = {
         error: "bg-red-500/10 border-red-500/20 text-red-500 backdrop-blur-xl dark:bg-red-900/40 dark:border-red-500/30",

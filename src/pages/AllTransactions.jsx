@@ -97,7 +97,7 @@ const AllTransactions = () => {
             </div>
 
             {/* Search and Filters */}
-            <div className="px-4 mb-4 space-y-3 sticky top-[72px] z-10 bg-slate-50 dark:bg-slate-900 py-2">
+            <div id="tour-transactions-filter" className="px-4 mb-4 space-y-3 sticky top-[72px] z-10 bg-slate-50 dark:bg-slate-900 py-2">
                 {/* Search Bar */}
                 <div className="relative">
                     <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">search</span>

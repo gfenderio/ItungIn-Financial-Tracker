@@ -2,57 +2,88 @@ import React, { useState } from 'react';
 import { useApp } from '../contexts/AppContext';
 
 const Profile = () => {
-    const { darkMode, toggleDarkMode, language, toggleLanguage, transactions, resetData } = useApp();
+    const { darkMode, toggleDarkMode, language, toggleLanguage, transactions, resetData, resetDemoDataForTour, userProfile, updateUserProfile, showConfirm, debts, accounts, subscriptions } = useApp();
 
     const [isEditingProfile, setIsEditingProfile] = useState(false);
-    const [userName, setUserName] = useState(() => localStorage.getItem('userName') || 'User Name');
-    const [userEmail, setUserEmail] = useState(() => localStorage.getItem('userEmail') || 'user@example.com');
+
+    const userName = userProfile?.name || (language === 'id' ? 'Pengguna' : 'User');
+    const userEmail = userProfile?.email || 'user@example.com';
+
     const [tempName, setTempName] = useState(userName);
     const [tempEmail, setTempEmail] = useState(userEmail);
 
-    const [showResetConfirm, setShowResetConfirm] = useState(false);
-
     const handleSaveProfile = () => {
-        setUserName(tempName);
-        setUserEmail(tempEmail);
-        localStorage.setItem('userName', tempName);
-        localStorage.setItem('userEmail', tempEmail);
+        updateUserProfile({ name: tempName, email: tempEmail });
         setIsEditingProfile(false);
     };
+    const handleExportJSON = () => {
+        const fullBackup = {
+            transactions,
+            debts,
+            accounts,
+            subscriptions,
+            userProfile,
+            version: '1.0.0',
+            exportedAt: new Date().toISOString()
+        };
 
-    const handleExportCSV = () => {
-        if (!transactions || transactions.length === 0) {
-            alert(language === 'id' ? "Tidak ada data transaksi untuk diekspor." : "No transaction data to export.");
-            return;
-        }
-
-        const headers = ["ID", "Title", "Amount", "Category", "Date", "Account ID"];
-        const rows = transactions.map(t => [
-            t.id,
-            `"${t.title.replace(/"/g, '""')}"`, // escape quotes
-            t.amount,
-            `"${t.category}"`,
-            t.date,
-            t.accountId || ''
-        ]);
-
-        const csvContent = "data:text/csv;charset=utf-8,"
-            + headers.join(",") + "\n"
-            + rows.map(e => e.join(",")).join("\n");
-
-        const encodedUri = encodeURI(csvContent);
+        const jsonString = `data:text/json;charset=utf-8,${encodeURIComponent(JSON.stringify(fullBackup, null, 2))}`;
         const link = document.createElement("a");
-        link.setAttribute("href", encodedUri);
-        link.setAttribute("download", `itungin_transactions_${new Date().toISOString().slice(0, 10)}.csv`);
-        document.body.appendChild(link);
+        link.href = jsonString;
+        link.download = `itungin_backup_${new Date().toISOString().slice(0, 10)}.json`;
         link.click();
-        document.body.removeChild(link);
+
+        // Update last backup date to silence the notification reminder
+        localStorage.setItem('lastBackupDate', new Date().toISOString());
+        alert(language === 'id' ? "Backup data berhasil diunduh!" : "Data backup downloaded successfully!");
     };
 
-    const handleConfirmReset = () => {
-        resetData();
-        setShowResetConfirm(false);
-        alert(language === 'id' ? "Semua data berhasil direset." : "All data has been reset.");
+    const handleImportJSON = (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const data = JSON.parse(e.target.result);
+
+                // Extremely basic schema validation
+                if (data.transactions && data.debts && data.accounts) {
+                    resetData(); // Clear first to avoid weird merges if desired, or manually set them
+
+                    // Note: In a real app we would use Context functions to set these directly to force re-renders properly
+                    localStorage.setItem('transactions', JSON.stringify(data.transactions));
+                    localStorage.setItem('debts', JSON.stringify(data.debts));
+                    localStorage.setItem('accounts', JSON.stringify(data.accounts));
+                    if (data.subscriptions) localStorage.setItem('subscriptions', JSON.stringify(data.subscriptions));
+                    if (data.userProfile) localStorage.setItem('userProfile', JSON.stringify(data.userProfile));
+
+                    alert(language === 'id' ? "Data berhasil dipulihkan! Memuat ulang..." : "Data restored successfully! Reloading...");
+                    window.location.reload(); // Hard reload to force context re-initialization from new LocalStorage
+                } else {
+                    alert(language === 'id' ? "File backup tidak valid." : "Invalid backup file structure.");
+                }
+            } catch (error) {
+                console.error("Import error:", error);
+                alert(language === 'id' ? "Gagal membaca file backup." : "Failed to parse backup file.");
+            }
+        };
+        reader.readAsText(file);
+    };
+
+    const handleConfirmReset = async () => {
+        const isConfirmed = await showConfirm(
+            language === 'id' ? 'Hapus Semua Data?' : 'Reset All Data?',
+            language === 'id'
+                ? 'Tindakan ini tidak dapat dibatalkan. Segala riwayat transaksi, hutang, dan pengaturan profil akan terhapus.'
+                : 'This action cannot be undone. All transaction history, debts, and profile settings will be wiped.',
+            'error'
+        );
+        if (isConfirmed) {
+            resetData();
+            // Optional tiny delay to ensure localStorage catches up
+            setTimeout(() => window.location.reload(), 100);
+        }
     };
 
     return (
@@ -134,7 +165,7 @@ const Profile = () => {
                         </label>
                     </div>
 
-                    <div onClick={toggleLanguage} className="flex items-center justify-between p-4 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+                    <div onClick={toggleLanguage} className="flex items-center justify-between p-4 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors border-b border-slate-50 dark:border-slate-700">
                         <div className="flex items-center gap-3">
                             <span className="material-symbols-outlined text-slate-400">language</span>
                             <span className="font-medium text-slate-700 dark:text-slate-200">Language</span>
@@ -146,6 +177,21 @@ const Profile = () => {
                             <span className="material-symbols-outlined text-sm text-slate-400">sync_alt</span>
                         </div>
                     </div>
+
+                    <div onClick={() => {
+                        resetDemoDataForTour();
+                        setTimeout(() => {
+                            window.location.href = '/';
+                        }, 100);
+                    }} className="flex items-center justify-between p-4 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+                        <div className="flex items-center gap-3">
+                            <span className="material-symbols-outlined text-purple-500">route</span>
+                            <span className="font-medium text-slate-700 dark:text-slate-200">
+                                {language === 'id' ? 'Ulangi Tur Aplikasi' : 'Replay App Tour'}
+                            </span>
+                        </div>
+                        <span className="material-symbols-outlined text-sm text-slate-400">chevron_right</span>
+                    </div>
                 </div>
             </section>
 
@@ -153,16 +199,28 @@ const Profile = () => {
             <section className="mb-6">
                 <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3 px-2">Data</h3>
                 <div className="bg-white dark:bg-slate-800 rounded-xl overflow-hidden shadow-sm border border-slate-100 dark:border-slate-700">
-                    <div onClick={handleExportCSV} className="flex items-center justify-between p-4 border-b border-slate-50 dark:border-slate-700 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+                    <div onClick={handleExportJSON} className="flex items-center justify-between p-4 border-b border-slate-50 dark:border-slate-700 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
                         <div className="flex items-center gap-3">
-                            <span className="material-symbols-outlined text-emerald-500">download</span>
+                            <span className="material-symbols-outlined text-emerald-500">cloud_download</span>
                             <span className="font-medium text-slate-700 dark:text-slate-200">
-                                {language === 'id' ? 'Ekspor Data (CSV)' : 'Export Data (CSV)'}
+                                {language === 'id' ? 'Ekspor Backup (JSON)' : 'Export Backup (JSON)'}
                             </span>
                         </div>
                         <span className="material-symbols-outlined text-sm text-slate-400">chevron_right</span>
                     </div>
-                    <div onClick={() => setShowResetConfirm(true)} className="flex items-center justify-between p-4 cursor-pointer hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors group">
+
+                    <label className="flex items-center justify-between p-4 border-b border-slate-50 dark:border-slate-700 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+                        <div className="flex items-center gap-3">
+                            <span className="material-symbols-outlined text-blue-500">cloud_upload</span>
+                            <span className="font-medium text-slate-700 dark:text-slate-200">
+                                {language === 'id' ? 'Pulihkan Data (JSON)' : 'Restore Data (JSON)'}
+                            </span>
+                        </div>
+                        <span className="material-symbols-outlined text-sm text-slate-400">chevron_right</span>
+                        <input type="file" accept=".json" onChange={handleImportJSON} className="hidden" />
+                    </label>
+
+                    <div onClick={handleConfirmReset} className="flex items-center justify-between p-4 cursor-pointer hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors group">
                         <div className="flex items-center gap-3">
                             <span className="material-symbols-outlined text-red-400 group-hover:text-red-500">delete_forever</span>
                             <span className="font-medium text-red-500">
@@ -174,38 +232,7 @@ const Profile = () => {
                 </div>
             </section>
 
-            {/* Reset Confirmation Modal */}
-            {showResetConfirm && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in zoom-in-95 duration-200">
-                    <div className="bg-white dark:bg-slate-900 w-full max-w-xs rounded-3xl p-6 shadow-2xl text-center border border-red-500/20">
-                        <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-4 text-red-500">
-                            <span className="material-symbols-outlined text-3xl">warning</span>
-                        </div>
-                        <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100 mb-2">
-                            {language === 'id' ? 'Apakah Anda yakin?' : 'Are you sure?'}
-                        </h3>
-                        <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
-                            {language === 'id' ? 'Tindakan ini tidak dapat dibatalkan. Semua transaksi, hutang, dan pengaturan akan dihapus secara permanen.' : 'This action cannot be undone. All transactions, debts, and settings will be permanently deleted.'}
-                        </p>
-                        <div className="flex gap-2">
-                            <button
-                                onClick={() => setShowResetConfirm(false)}
-                                className="flex-1 py-3 px-4 rounded-xl text-sm font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
-                            >
-                                {language === 'id' ? 'Batal' : 'Cancel'}
-                            </button>
-                            <button
-                                onClick={handleConfirmReset}
-                                className="flex-1 py-3 px-4 rounded-xl text-sm font-bold text-white bg-red-500 hover:bg-red-600 transition-colors shadow-lg shadow-red-500/30"
-                            >
-                                {language === 'id' ? 'Ya, Hapus' : 'Yes, Reset'}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            <p className="text-center text-xs text-slate-400 mt-8">ItungIn Version 2.0.0</p>
+            <p className="text-center text-xs text-slate-400 mt-8">ItungIn Version 1.0.0</p>
         </div>
     );
 };

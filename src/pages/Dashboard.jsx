@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../contexts/AppContext';
 import AddTransactionModal from '../components/AddTransactionModal';
@@ -13,6 +13,18 @@ const Dashboard = () => {
     const [categoryType, setCategoryType] = useState('Spending'); // Spending, Income, Both
     const [showCategoryMenu, setShowCategoryMenu] = useState(false);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+
+    // Expose robust custom events for AppTourOverlay to interact with this Dashboard correctly
+    useEffect(() => {
+        const handleOpen = () => setIsAddModalOpen(true);
+        const handleClose = () => setIsAddModalOpen(false);
+        window.addEventListener('open-add-modal', handleOpen);
+        window.addEventListener('close-add-modal', handleClose);
+        return () => {
+            window.removeEventListener('open-add-modal', handleOpen);
+            window.removeEventListener('close-add-modal', handleClose);
+        };
+    }, []);
 
     const formatMoney = (amount) => {
         return new Intl.NumberFormat('id-ID', {
@@ -38,10 +50,9 @@ const Dashboard = () => {
                 const lastMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
                 return tDate.getMonth() === lastMonthDate.getMonth() && tDate.getFullYear() === lastMonthDate.getFullYear();
             }
-            // Add more logic for 'Month to Date' etc if needed, treating Month to Date same as This Month for simplicity or specific day check
-            // Add logic for 'Month to Date' etc if needed, treating Month to Date same as This Month for simplicity or specific day check
-            if (period === 'Month to Date') {
-                return tDate.getMonth() === currentMonth && tDate.getFullYear() === currentYear && tDate <= now;
+            // Add logic for 'Year to Date' etc if needed
+            if (period === 'Year to Date') {
+                return tDate.getFullYear() === currentYear && tDate <= now;
             }
             if (period === 'Choose Period') {
                 if (customStartDate && customEndDate) {
@@ -59,7 +70,7 @@ const Dashboard = () => {
     const filteredTransactions = filterTransactionsByPeriod(transactions, timePeriod);
 
     // Strict predefined periods
-    const periodOptions = ['This Month', 'Last Month', 'Month to Date', 'Choose Period'];
+    const periodOptions = ['This Month', 'Last Month', 'Year to Date', 'Choose Period'];
 
     // --- Spending Categories Logic ---
     let targetTransactions = filteredTransactions;
@@ -72,48 +83,81 @@ const Dashboard = () => {
 
     let sortedCategories = [];
 
-    if (categoryType === 'Both') {
-        const incomeTotal = filteredTransactions.filter(t => t.amount > 0).reduce((acc, curr) => acc + curr.amount, 0);
-        const expenseTotal = filteredTransactions.filter(t => t.amount < 0).reduce((acc, curr) => acc + Math.abs(curr.amount), 0);
-
-        const data = {};
-        if (incomeTotal > 0) data[language === 'id' ? 'Pemasukan' : 'Income'] = incomeTotal;
-        if (expenseTotal > 0) data[language === 'id' ? 'Pengeluaran' : 'Expense'] = expenseTotal;
-
-        sortedCategories = Object.entries(data).sort(([, a], [, b]) => b - a);
-    } else {
-        const categoryData = targetTransactions.reduce((acc, curr) => {
+    const getBreakdown = (txs) => {
+        const categoryData = txs.reduce((acc, curr) => {
             const cat = curr.category;
             acc[cat] = (acc[cat] || 0) + Math.abs(curr.amount);
             return acc;
         }, {});
-
-        sortedCategories = Object.entries(categoryData)
-            .sort(([, a], [, b]) => b - a)
-            .slice(0, 4);
-    }
-
-    // Color shades generator based on type
-    const getCategoryColorClass = (idx, catName) => {
-        if (categoryType === 'Spending') {
-            const redShades = ['bg-red-600', 'bg-red-500', 'bg-red-400', 'bg-red-300'];
-            return redShades[idx % redShades.length];
-        } else if (categoryType === 'Income') {
-            const greenShades = ['bg-emerald-600', 'bg-emerald-500', 'bg-emerald-400', 'bg-emerald-300'];
-            return greenShades[idx % greenShades.length];
-        } else {
-            if (catName === 'Income' || catName === 'Pemasukan') return 'bg-emerald-500';
-            if (catName === 'Expense' || catName === 'Pengeluaran') return 'bg-red-500';
-            const mixedShades = ['bg-indigo-500', 'bg-purple-500', 'bg-blue-500', 'bg-teal-500'];
-            return mixedShades[idx % mixedShades.length];
-        }
+        return Object.entries(categoryData).sort(([, a], [, b]) => b - a);
     };
 
-    // For CSS border representation in the donut chart
-    const getDonutBorderClass = () => {
-        if (categoryType === 'Spending') return 'border-red-500';
-        if (categoryType === 'Income') return 'border-emerald-500';
-        return 'border-indigo-500';
+    // Color shades generator based on type
+    const getCategoryColorClass = (idx, flowType) => {
+        if (flowType === 'Spending' || flowType === 'Expense') {
+            const redShades = ['bg-red-500', 'bg-rose-400', 'bg-orange-400', 'bg-pink-400', 'bg-red-300', 'bg-amber-400'];
+            return redShades[idx % redShades.length];
+        } else if (flowType === 'Income') {
+            const greenShades = ['bg-emerald-500', 'bg-teal-400', 'bg-cyan-400', 'bg-green-400', 'bg-emerald-300', 'bg-lime-400'];
+            return greenShades[idx % greenShades.length];
+        }
+        const mixedShades = ['bg-indigo-500', 'bg-purple-500', 'bg-blue-500', 'bg-teal-500'];
+        return mixedShades[idx % mixedShades.length];
+    };
+
+    const renderStackedBar = (title, totalAmount, categories, flowType) => {
+        if (categories.length === 0) {
+            return (
+                <div className="flex flex-col items-center justify-center py-6 text-slate-300 dark:text-slate-600 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800">
+                    <span className="material-symbols-outlined text-3xl opacity-50 mb-2">bar_chart</span>
+                    <span className="text-xs font-bold">{language === 'id' ? 'Tidak ada data' : 'No data'}</span>
+                </div>
+            );
+        }
+
+        return (
+            <div className="w-full space-y-4 bg-slate-50 dark:bg-slate-900/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm animate-in fade-in duration-500">
+                <div className="flex justify-between items-end mb-2">
+                    <div>
+                        <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200">{title}</h4>
+                        <p className="text-xs font-bold text-slate-500 dark:text-slate-400 mt-0.5">{formatMoney(totalAmount)}</p>
+                    </div>
+                </div>
+
+                {/* The Stacked Progress Bar */}
+                <div className="w-full h-3 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden flex shadow-inner">
+                    {categories.map(([cat, amount], idx) => {
+                        const percent = totalAmount > 0 ? (amount / totalAmount) * 100 : 0;
+                        const colorClass = getCategoryColorClass(idx, flowType);
+                        return (
+                            <div
+                                key={cat}
+                                style={{ width: `${percent}%` }}
+                                className={`h-full border-r border-white/20 dark:border-slate-900/50 last:border-0 transition-all duration-1000 ease-out ${colorClass}`}
+                                title={`${cat}: ${percent.toFixed(1)}%`}
+                            ></div>
+                        );
+                    })}
+                </div>
+
+                {/* Legend / Breakdown List */}
+                <div className="grid grid-cols-2 gap-y-2 gap-x-2 pt-1">
+                    {categories.map(([cat, amount], idx) => {
+                        const percent = totalAmount > 0 ? ((amount / totalAmount) * 100).toFixed(1) : 0;
+                        const colorClass = getCategoryColorClass(idx, flowType);
+                        return (
+                            <div key={cat} className="flex items-center justify-between group text-[11px] sm:text-xs bg-white dark:bg-slate-800 px-2 py-1.5 rounded-lg border border-slate-100 dark:border-slate-700/50">
+                                <div className="flex items-center gap-2 truncate">
+                                    <div className={`w-2 h-2 rounded-full flex-shrink-0 ${colorClass}`}></div>
+                                    <span className="font-bold text-slate-600 dark:text-slate-300 truncate">{cat}</span>
+                                </div>
+                                <span className="font-bold text-slate-900 dark:text-slate-100 ml-2">{percent}%</span>
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
+        );
     };
 
     // --- Balance Logic ---
@@ -150,7 +194,7 @@ const Dashboard = () => {
     return (
         <>
             {/* Hero Balance Section */}
-            <section className={`p-4 pt-6 rounded-b-3xl text-white shadow-lg relative overflow-hidden transition-colors duration-500 mb-6 ${isBalanceNegative ? 'bg-red-500 shadow-red-500/20' : 'bg-primary shadow-primary/20'}`}>
+            <section className={`hero-balance-section p-4 pt-6 rounded-b-3xl text-white shadow-lg relative overflow-hidden transition-colors duration-500 mb-6 ${isBalanceNegative ? 'bg-red-500 shadow-red-500/20' : 'bg-primary shadow-primary/20'}`}>
                 {/* Abstract Pattern Decoration */}
                 <div className="absolute top-0 right-0 -mr-8 -mt-8 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
                 <div className="absolute bottom-0 left-0 -ml-8 -mb-8 w-24 h-24 bg-white/5 rounded-full blur-xl"></div>
@@ -159,7 +203,7 @@ const Dashboard = () => {
                     <p className="text-white/90 text-sm font-medium opacity-90">{language === 'id' ? 'Total Saldo' : 'Total Balance'}</p>
                     <button
                         onClick={() => setIsAddModalOpen(true)}
-                        className="bg-white/20 hover:bg-white/30 text-white px-3 py-1.5 rounded-full text-xs font-bold transition-colors flex items-center gap-1"
+                        className="add-transaction-btn bg-white/20 hover:bg-white/30 text-white px-3 py-1.5 rounded-full text-xs font-bold transition-colors flex items-center gap-1"
                     >
                         <span className="material-symbols-outlined text-sm">add</span>
                         {language === 'id' ? 'Tambah Transaksi' : 'Add Transaction'}
@@ -293,82 +337,59 @@ const Dashboard = () => {
                         </div>
                     )}
 
-                    <div className="flex flex-col md:flex-row items-center gap-8">
-                        <div className="donut-chart flex-shrink-0 relative w-40 h-40 flex items-center justify-center">
-                            {/* Pure SVG Animated Donut Implementation */}
-                            <svg viewBox="0 0 100 100" className="absolute inset-0 w-full h-full -rotate-90 drop-shadow-md">
-                                {/* Dynamic Segments */}
-                                {(() => {
-                                    if (sortedCategories.length === 0) return null;
+                    {/* Horizontal Bar Chart Implementation */}
+                    <div className="w-full space-y-4 pt-2">
+                        {categoryType === 'Both' ? (
+                            <>
+                                {renderStackedBar(
+                                    language === 'id' ? 'Pemasukan' : 'Income Breakdown',
+                                    filteredTransactions.filter(t => t.amount > 0).reduce((acc, c) => acc + c.amount, 0),
+                                    getBreakdown(filteredTransactions.filter(t => t.amount > 0)),
+                                    'Income'
+                                )}
+                                {renderStackedBar(
+                                    language === 'id' ? 'Pengeluaran' : 'Spending Breakdown',
+                                    filteredTransactions.filter(t => t.amount < 0).reduce((acc, c) => acc + Math.abs(c.amount), 0),
+                                    getBreakdown(filteredTransactions.filter(t => t.amount < 0)),
+                                    'Expense'
+                                )}
+                            </>
+                        ) : (
+                            renderStackedBar(
+                                language === 'id' ? 'Rincian Kategori' : 'Category Breakdown',
+                                totalCategoriesAmount,
+                                getBreakdown(targetTransactions),
+                                categoryType
+                            )
+                        )}
+                    </div>
+                </div>
+            </section>
 
-                                    let cumulativePercent = 0;
-                                    const circumference = 2 * Math.PI * 40; // ~251.2
+            {/* Advanced Features Links */}
+            <section className="px-4 mt-2">
+                <div
+                    onClick={() => navigate('/premium')}
+                    className="relative overflow-hidden bg-gradient-to-br from-slate-900 to-slate-800 dark:from-slate-800 dark:to-slate-900 p-6 rounded-3xl shadow-lg cursor-pointer hover:shadow-xl transition-all group mb-6 active:scale-[0.98]"
+                >
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-primary/20 rounded-full blur-3xl -mr-10 -mt-10 group-hover:bg-primary/30 transition-colors"></div>
+                    <div className="absolute bottom-0 left-0 w-24 h-24 bg-purple-500/20 rounded-full blur-2xl -ml-8 -mb-8 group-hover:bg-purple-500/30 transition-colors"></div>
 
-                                    return sortedCategories.map(([cat, amount], idx) => {
-                                        const percent = totalCategoriesAmount > 0 ? (amount / totalCategoriesAmount) : 0;
-                                        const strokeDasharray = `${percent * circumference} ${circumference}`;
-                                        const strokeDashoffset = -(cumulativePercent * circumference);
-                                        cumulativePercent += percent;
-
-                                        // Lookup hex colors for SVG
-                                        let strokeColor = '#6366f1'; // fallback indigo
-                                        if (categoryType === 'Spending') {
-                                            const reds = ['#dc2626', '#ef4444', '#f87171', '#fca5a5'];
-                                            strokeColor = reds[idx % reds.length];
-                                        } else if (categoryType === 'Income') {
-                                            const greens = ['#059669', '#10b981', '#34d399', '#6ee7b7'];
-                                            strokeColor = greens[idx % greens.length];
-                                        } else {
-                                            if (cat === 'Income' || cat === 'Pemasukan') strokeColor = '#10b981'; // emerald-500
-                                            else if (cat === 'Expense' || cat === 'Pengeluaran') strokeColor = '#ef4444'; // red-500
-                                            else {
-                                                const mixed = ['#6366f1', '#a855f7', '#3b82f6', '#14b8a6'];
-                                                strokeColor = mixed[idx % mixed.length];
-                                            }
-                                        }
-
-                                        return (
-                                            <g key={cat} className="group cursor-pointer">
-                                                <circle
-                                                    cx="50"
-                                                    cy="50"
-                                                    r="40"
-                                                    fill="transparent"
-                                                    stroke={strokeColor}
-                                                    className="transition-all duration-700 ease-out origin-center stroke-[12px] group-hover:stroke-[16px] group-hover:opacity-100 opacity-90"
-                                                    strokeDasharray={strokeDasharray}
-                                                    strokeDashoffset={strokeDashoffset}
-                                                    strokeLinecap="round"
-                                                    style={{ animation: 'dash 1.2s cubic-bezier(0.4, 0, 0.2, 1) forwards' }}
-                                                />
-                                            </g>
-                                        );
-                                    });
-                                })()}
-                            </svg>
-
-                            {/* Empty State Overlay */}
-                            {sortedCategories.length === 0 && (
-                                <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-300 dark:text-slate-600">
-                                    <span className="material-symbols-outlined text-4xl opacity-50">pie_chart</span>
-                                </div>
-                            )}
-                            <div className="relative z-10 text-center flex flex-col items-center justify-center">
-                                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-0.5">{language === 'id' ? 'Total' : 'Total'}</span>
-                                <span className="font-bold text-xs sm:text-sm text-slate-900 dark:text-slate-100">{formatMoney(totalCategoriesAmount)}</span>
+                    <div className="relative z-10 flex items-center justify-between">
+                        <div>
+                            <div className="flex items-center gap-2 mb-2">
+                                <span className="material-symbols-outlined text-amber-400">workspace_premium</span>
+                                <span className="text-xs font-bold text-amber-400 uppercase tracking-widest">{language === 'id' ? 'Fitur Plus' : 'ItungIn Plus'}</span>
                             </div>
+                            <h3 className="text-xl font-bold text-white mb-1">
+                                {language === 'id' ? 'Akses Fitur Pro' : 'Unlock Pro Features'}
+                            </h3>
+                            <p className="text-sm text-slate-400 line-clamp-2 max-w-[200px]">
+                                {language === 'id' ? 'Mulai rencanakan anggaran, analitik detail, dan tabungan.' : 'Master budgets, deep analytics, and savings goals.'}
+                            </p>
                         </div>
-                        <div className="w-full space-y-3">
-                            {sortedCategories.map(([cat, amount], idx) => (
-                                <div key={cat} className="flex items-center justify-between group">
-                                    <div className="flex items-center gap-3">
-                                        <div className={`w-3 h-3 rounded-full ${getCategoryColorClass(idx, cat)}`}></div>
-                                        <span className="text-sm font-medium text-slate-600 dark:text-slate-300">{cat}</span>
-                                    </div>
-                                    <span className="text-sm font-bold">{totalCategoriesAmount > 0 ? Math.round((amount / totalCategoriesAmount) * 100) : 0}%</span>
-                                </div>
-                            ))}
-                            {sortedCategories.length === 0 && <p className="text-sm text-slate-400 text-center py-2">{language === 'id' ? 'Tidak ada data untuk' : 'No data for'} {timePeriod}</p>}
+                        <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center backdrop-blur-sm group-hover:bg-white/20 transition-colors">
+                            <span className="material-symbols-outlined text-white">chevron_right</span>
                         </div>
                     </div>
                 </div>

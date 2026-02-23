@@ -2,9 +2,13 @@ import React, { useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useApp } from '../contexts/AppContext';
 import CustomAlert from './CustomAlert';
+import CustomConfirm from './CustomConfirm';
+import OnboardingModal from './OnboardingModal';
+import NotificationsPanel from './NotificationsPanel';
+import AppTourOverlay from './AppTourOverlay';
 
 const Layout = () => {
-    const { darkMode, toggleDarkMode, notifications, markAllAsRead, markAsRead } = useApp();
+    const { darkMode, toggleDarkMode, notifications, markAllNotificationsAsRead, markNotificationAsRead, language, hasCompletedOnboarding } = useApp();
     const location = useLocation();
     const navigate = useNavigate();
     const [showNotifications, setShowNotifications] = useState(false);
@@ -17,7 +21,9 @@ const Layout = () => {
 
     return (
         <div className="bg-slate-50 dark:bg-slate-900 font-display text-slate-900 dark:text-slate-100 min-h-screen flex flex-col transition-colors duration-300">
+            <OnboardingModal />
             <CustomAlert />
+            <CustomConfirm />
             {/* Top Header Navigation */}
             <header className="sticky top-0 z-50 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md px-4 py-3 flex items-center justify-between border-b border-slate-200 dark:border-slate-800">
                 <div
@@ -51,41 +57,10 @@ const Layout = () => {
                     </button>
 
                     {/* Notification Dropdown */}
-                    {showNotifications && (
-                        <>
-                            <div className="fixed inset-0 z-40 bg-transparent" onClick={() => setShowNotifications(false)}></div>
-                            <div className="absolute top-12 right-0 w-72 bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-700 z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200 origin-top-right">
-                                <div className="p-3 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-white dark:bg-slate-800">
-                                    <h3 className="font-bold text-sm text-slate-800 dark:text-slate-100">Notifications</h3>
-                                    {unreadCount > 0 && (
-                                        <button onClick={markAllAsRead} className="text-xs text-primary font-semibold hover:text-green-600">Mark all read</button>
-                                    )}
-                                </div>
-                                <div className="max-h-64 overflow-y-auto w-full bg-white dark:bg-slate-800">
-                                    {notifications.length === 0 ? (
-                                        <div className="p-4 text-center text-slate-400 text-xs">No notifications yet.</div>
-                                    ) : (
-                                        notifications.map((notif, i) => (
-                                            <div
-                                                key={notif.id || i}
-                                                onClick={() => { if (!notif.read) markAsRead(notif.id) }}
-                                                className={`p-3 border-b border-slate-50 dark:border-slate-700/50 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors cursor-pointer ${!notif.read ? 'bg-primary/5' : ''}`}
-                                            >
-                                                <div className="flex justify-between items-start gap-2">
-                                                    <p className={`text-xs flex-1 ${!notif.read ? 'font-bold text-slate-900 dark:text-slate-100' : 'font-medium text-slate-600 dark:text-slate-400'}`}>{notif.text}</p>
-                                                    {!notif.read && <div className="w-1.5 h-1.5 rounded-full bg-primary mt-1 flex-shrink-0"></div>}
-                                                </div>
-                                                <p className="text-[10px] text-slate-400 mt-1">{notif.time}</p>
-                                            </div>
-                                        ))
-                                    )}
-                                </div>
-                                <div className="p-2 text-center bg-slate-50 dark:bg-slate-800 border-t border-slate-100 dark:border-slate-700">
-                                    <button className="text-xs font-semibold text-slate-500 hover:text-primary">View Activity Log</button>
-                                </div>
-                            </div>
-                        </>
-                    )}
+                    <NotificationsPanel
+                        show={showNotifications}
+                        onClose={() => setShowNotifications(false)}
+                    />
                 </div>
             </header>
 
@@ -96,23 +71,23 @@ const Layout = () => {
             {/* Bottom Navigation Bar */}
             {showBottomNav && (
                 <nav className="fixed bottom-0 left-0 right-0 bg-white/90 dark:bg-slate-900/90 backdrop-blur-lg border-t border-slate-100 dark:border-slate-800 px-6 py-3 pb-6 flex items-center justify-between z-40">
-                    <NavLink to="/" className={({ isActive }) => `flex flex-col items-center gap-1 transition-all duration-200 ${isActive ? 'text-primary scale-110' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}>
+                    <NavLink id="nav-dashboard" to="/" className={({ isActive }) => `flex flex-col items-center gap-1 transition-all duration-200 ${isActive ? 'text-primary scale-110' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}>
                         <span className={`material-symbols-outlined ${location.pathname === '/' ? 'filled-icon' : ''}`}>grid_view</span>
                         <span className="text-[10px] font-medium">Dashboard</span>
                     </NavLink>
-                    <NavLink to="/transactions" className={({ isActive }) => `flex flex-col items-center gap-1 transition-all duration-200 ${isActive ? 'text-primary scale-110' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}>
+                    <NavLink id="nav-transactions" to="/transactions" className={({ isActive }) => `flex flex-col items-center gap-1 transition-all duration-200 ${isActive ? 'text-primary scale-110' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}>
                         <span className="material-symbols-outlined">receipt_long</span>
                         <span className="text-[10px] font-medium">Transactions</span>
                     </NavLink>
-                    <NavLink to="/debt" className={({ isActive }) => `flex flex-col items-center gap-1 transition-all duration-200 ${isActive ? 'text-primary scale-110' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}>
+                    <NavLink id="nav-debt" to="/debt" className={({ isActive }) => `flex flex-col items-center gap-1 transition-all duration-200 ${isActive ? 'text-primary scale-110' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}>
                         <span className="material-symbols-outlined">account_balance</span>
                         <span className="text-[10px] font-medium">Debt</span>
                     </NavLink>
-                    <NavLink to="/subscriptions" className={({ isActive }) => `flex flex-col items-center gap-1 transition-all duration-200 ${isActive ? 'text-primary scale-110' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}>
+                    <NavLink id="nav-bills" to="/subscriptions" className={({ isActive }) => `flex flex-col items-center gap-1 transition-all duration-200 ${isActive ? 'text-primary scale-110' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}>
                         <span className="material-symbols-outlined">event_repeat</span>
                         <span className="text-[10px] font-medium">Bills</span>
                     </NavLink>
-                    <NavLink to="/profile" className={({ isActive }) => `flex flex-col items-center gap-1 transition-all duration-200 ${isActive ? 'text-primary scale-110' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}>
+                    <NavLink id="nav-profile" to="/profile" className={({ isActive }) => `flex flex-col items-center gap-1 transition-all duration-200 ${isActive ? 'text-primary scale-110' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}>
                         <span className="material-symbols-outlined">person</span>
                         <span className="text-[10px] font-medium">Profile</span>
                     </NavLink>

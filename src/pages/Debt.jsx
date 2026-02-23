@@ -3,7 +3,7 @@ import { useApp } from '../contexts/AppContext';
 import DebtDetailModal from '../components/DebtDetailModal';
 
 const Debt = () => {
-    const { debts, setDebts, transactions, language, calculateIncome } = useApp();
+    const { debts, setDebts, transactions, language, calculateIncome, showAlert } = useApp();
     const [filter, setFilter] = useState('All');
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [selectedDebt, setSelectedDebt] = useState(null);
@@ -17,6 +17,8 @@ const Debt = () => {
     const [date, setDate] = useState(new Date().toISOString().slice(0, 10)); // YYYY-MM-DD
     const [dueDay, setDueDay] = useState(1);
     const [monthsLeft, setMonthsLeft] = useState(12);
+    const [lateFeeType, setLateFeeType] = useState('percentage'); // 'percentage' or 'fixed'
+    const [lateFeeValue, setLateFeeValue] = useState('');
 
     const formatMoney = (amount) => {
         return new Intl.NumberFormat('id-ID', {
@@ -41,7 +43,7 @@ const Debt = () => {
 
     const handleAddDebt = () => {
         if (!amount || !title) {
-            alert("Please enter title and amount.");
+            showAlert(language === 'id' ? 'Silakan masukkan judul dan jumlah.' : 'Please enter title and amount.', 'error');
             return;
         }
         const newDebt = {
@@ -54,7 +56,9 @@ const Debt = () => {
             icon: category === 'Bank Loans' ? 'account_balance' : category === 'Credit Card' ? 'credit_card' : 'person',
             dueDays: dueDay,
             category: category,
-            monthsLeft: monthsLeft
+            monthsLeft: monthsLeft,
+            lateFeeType: lateFeeType,
+            lateFeeValue: parseFloat(lateFeeValue) || 0
         };
 
         if (setDebts) {
@@ -69,6 +73,8 @@ const Debt = () => {
         setDate(new Date().toISOString().slice(0, 10));
         setDueDay(1);
         setMonthsLeft(12);
+        setLateFeeType('percentage');
+        setLateFeeValue('');
     };
 
     // Calculate next payment day checking the offset for future months
@@ -127,10 +133,13 @@ const Debt = () => {
     return (
         <div className="min-h-screen bg-slate-50 dark:bg-slate-900 font-display pb-24">
             {/* Header / Aggregate Card */}
-            <div className="p-4 pt-6 bg-indigo-600 rounded-b-3xl text-white shadow-lg shadow-indigo-600/20 mb-6 relative overflow-hidden">
+            <div id="tour-debt-header" className="p-4 pt-6 bg-indigo-600 rounded-b-3xl text-white shadow-lg shadow-indigo-600/20 mb-6 relative overflow-hidden">
+                {/* Abstract Pattern Decoration */}
                 <div className="absolute top-0 right-0 -mr-8 -mt-8 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
+                <div className="absolute bottom-0 left-0 -ml-8 -mb-8 w-24 h-24 bg-white/5 rounded-full blur-xl"></div>
+
                 <div className="relative z-10 flex justify-between items-start mb-4">
-                    <p className="indigo-100 text-sm font-medium">{language === 'id' ? 'Total Hutang Keseluruhan' : 'Total Aggregate Debt'}</p>
+                    <p className="text-indigo-100 text-sm font-medium">{language === 'id' ? 'Total Htg Keseluruhan' : 'Total Aggregate Debt'}</p>
                     <button
                         onClick={() => setIsAddModalOpen(true)}
                         className="bg-white/20 hover:bg-white/30 text-white px-3 py-1.5 rounded-full text-xs font-bold transition-colors flex items-center gap-1"
@@ -139,11 +148,12 @@ const Debt = () => {
                         {language === 'id' ? 'Tambah Hutang' : 'Add Debt'}
                     </button>
                 </div>
+
                 <div className="relative z-10">
-                    <h2 className="text-4xl font-bold">{formatMoney(totalDebt)}</h2>
-                    <div className="flex items-center gap-1 mt-2 text-xs font-medium bg-white/20 w-fit px-2 py-1 rounded-full text-white">
-                        <span className="material-symbols-outlined text-[14px]">trending_down</span>
-                        <span>{language === 'id' ? 'Tetap terkendali' : 'Keep it manageable'}</span>
+                    <h2 className="text-4xl font-bold mt-1">{formatMoney(totalDebt)}</h2>
+                    <div className="mt-2 flex items-center gap-1 text-xs bg-white/20 w-fit px-2 py-1 rounded-full text-white">
+                        <span className="material-symbols-outlined text-[14px]">account_balance_wallet</span>
+                        <span>{language === 'id' ? 'Total hutang aktif' : 'Active debt totals'}</span>
                     </div>
                 </div>
             </div>
@@ -365,110 +375,109 @@ const Debt = () => {
             {isAddModalOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm shadow-2xl animate-in fade-in zoom-in-95 duration-200">
                     <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-3xl overflow-hidden shadow-2xl flex flex-col font-display max-h-[90vh]">
-                        <div className="bg-indigo-600 p-4 text-center relative border-b border-indigo-700">
-                            <h2 className="text-lg font-bold text-white">{language === 'id' ? 'Tambah Hutang' : 'Add Debt'}</h2>
-                            <button
-                                onClick={() => setIsAddModalOpen(false)}
-                                className="absolute right-4 top-1/2 -translate-y-1/2 text-indigo-100 hover:text-white"
-                            >
+                        <div className="flex items-center justify-between p-4 bg-white dark:bg-slate-800 border-b border-slate-100 dark:border-slate-800">
+                            <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 flex-1 pl-4 text-center">
+                                {language === 'id' ? 'Tambah Hutang' : 'Add Debt'}
+                            </h3>
+                            <button onClick={() => setIsAddModalOpen(false)} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 transition-colors">
                                 <span className="material-symbols-outlined">close</span>
                             </button>
                         </div>
 
-                        <div className="p-4 overflow-y-auto space-y-4">
-                            {/* Amount Input */}
-                            <div className="flex flex-col items-center justify-center py-4 px-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800">
-                                <span className="text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">{language === 'id' ? 'Total Jumlah' : 'Total Amount'}</span>
-                                <div className="flex items-center gap-2 justify-center w-full">
-                                    <span className="text-indigo-600 font-bold text-3xl">Rp</span>
+                        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                            <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700/50">
+                                <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-2">{language === 'id' ? 'Judul Hutang (Maks 15)' : 'Debt Title (Max 15)'}</label>
+                                <input
+                                    type="text"
+                                    maxLength={15}
+                                    value={title}
+                                    onChange={(e) => setTitle(e.target.value)}
+                                    className="w-full bg-slate-50 dark:bg-slate-900 border-none rounded-xl p-3 text-sm font-bold text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 transition-all placeholder:text-slate-400"
+                                    placeholder={language === 'id' ? 'Cth: Cicilan Mobil' : 'Ex: Car Loan'}
+                                />
+                            </div>
+
+                            <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700/50 flex items-center gap-3">
+                                <div className="text-indigo-500 font-black text-xl">Rp</div>
+                                <input
+                                    type="number"
+                                    value={amount}
+                                    onChange={(e) => setAmount(e.target.value)}
+                                    className="flex-1 bg-transparent border-none p-0 text-xl font-black text-slate-900 dark:text-slate-100 focus:ring-0 placeholder:text-slate-300"
+                                    placeholder="0"
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700/50">
+                                    <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-2 truncate">{language === 'id' ? 'Kategori' : 'Category'}</label>
+                                    <select
+                                        value={category}
+                                        onChange={(e) => setCategory(e.target.value)}
+                                        className="w-full bg-slate-50 dark:bg-slate-900 border-none rounded-xl p-3 text-sm font-bold text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500"
+                                    >
+                                        <option value="Bank Loans">Bank Loans</option>
+                                        <option value="Credit Card">Credit Card</option>
+                                        <option value="Personal">Personal</option>
+                                    </select>
+                                </div>
+                                <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700/50">
+                                    <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-2 truncate">{language === 'id' ? 'Tanggal Mulai' : 'Start Date'}</label>
+                                    <input
+                                        type="date"
+                                        value={date}
+                                        onChange={(e) => setDate(e.target.value)}
+                                        className="w-full bg-slate-50 dark:bg-slate-900 border-none rounded-xl p-3 text-sm font-bold text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500"
+                                    />
+                                </div>
+                                <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700/50">
+                                    <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-2 truncate">{language === 'id' ? 'Tgl Jatuh Tempo' : 'Due Day'}</label>
+                                    <select
+                                        value={dueDay}
+                                        onChange={(e) => setDueDay(parseInt(e.target.value))}
+                                        className="w-full bg-slate-50 dark:bg-slate-900 border-none rounded-xl p-3 text-sm font-bold text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500"
+                                    >
+                                        {[...Array(31)].map((_, i) => (
+                                            <option key={i + 1} value={i + 1}>{i + 1}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700/50">
+                                    <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-2 truncate">{language === 'id' ? 'Sisa Bulan' : 'Months Left'}</label>
                                     <input
                                         type="number"
-                                        value={amount}
-                                        onChange={(e) => setAmount(e.target.value)}
-                                        className="w-full max-w-[80%] text-center bg-transparent border-none focus:ring-0 text-slate-900 dark:text-slate-100 font-bold tracking-tight p-0 placeholder:text-slate-300 text-3xl"
+                                        value={monthsLeft}
+                                        onChange={(e) => setMonthsLeft(parseInt(e.target.value))}
+                                        min="1"
+                                        className="w-full bg-slate-50 dark:bg-slate-900 border-none rounded-xl p-3 text-sm font-bold text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 placeholder:text-slate-400"
+                                    />
+                                </div>
+                                <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700/50">
+                                    <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-2 truncate">{language === 'id' ? 'Tipe Denda' : 'Late Fee'}</label>
+                                    <select
+                                        value={lateFeeType}
+                                        onChange={(e) => setLateFeeType(e.target.value)}
+                                        className="w-full bg-slate-50 dark:bg-slate-900 border-none rounded-xl p-3 text-sm font-bold text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500"
+                                    >
+                                        <option value="percentage">{language === 'id' ? 'Persen (%)' : 'Percent (%)'}</option>
+                                        <option value="fixed">{language === 'id' ? 'Nominal' : 'Fixed'}</option>
+                                    </select>
+                                </div>
+                                <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700/50">
+                                    <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-2 truncate">{language === 'id' ? 'Nilai Denda' : 'Fee Value'}</label>
+                                    <input
+                                        type="number"
+                                        value={lateFeeValue}
+                                        onChange={(e) => setLateFeeValue(e.target.value)}
+                                        min="0"
+                                        className="w-full bg-slate-50 dark:bg-slate-900 border-none rounded-xl p-3 text-sm font-bold text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 placeholder:text-slate-400"
                                         placeholder="0"
                                     />
                                 </div>
                             </div>
-
-                            {/* Title & Category form */}
-                            <div className="space-y-3">
-                                <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700">
-                                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">{language === 'id' ? 'Judul' : 'Title'}</p>
-                                    <input
-                                        type="text"
-                                        value={title}
-                                        onChange={(e) => setTitle(e.target.value)}
-                                        placeholder={language === 'id' ? 'cth. Cicilan Mobil' : 'e.g. Car Loan'}
-                                        className="w-full bg-transparent border-none p-0 text-sm font-bold focus:ring-0 text-slate-900 dark:text-slate-100 placeholder:font-normal"
-                                    />
-                                </div>
-
-                                <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700">
-                                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">{language === 'id' ? 'Kategori' : 'Category'}</p>
-                                    <div className="grid grid-cols-3 gap-2 mt-2">
-                                        {['Bank Loans', 'Credit Card', 'Personal'].map(cat => (
-                                            <button
-                                                key={cat}
-                                                onClick={() => setCategory(cat)}
-                                                className={`py-2 px-1 text-xs font-bold rounded-xl border transition-colors ${category === cat ? 'bg-indigo-50 dark:bg-indigo-500/20 border-indigo-500 text-indigo-600 dark:text-indigo-400' : 'bg-transparent border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400'}`}
-                                            >
-                                                {cat}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Dates and terms form */}
-                            <div className="space-y-3">
-                                <div className="relative flex items-center gap-4 bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700">
-                                    <div className="w-10 h-10 flex items-center justify-center rounded-full bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600">
-                                        <span className="material-symbols-outlined text-xl">calendar_today</span>
-                                    </div>
-                                    <div className="flex-1">
-                                        <p className="text-xs text-slate-400 font-medium">{language === 'id' ? 'Tanggal Mulai' : 'Start Date'}</p>
-                                        <input
-                                            type="date"
-                                            value={date}
-                                            onChange={(e) => setDate(e.target.value)}
-                                            className="bg-transparent border-none p-0 text-sm font-bold text-slate-900 dark:text-slate-100 focus:ring-0 w-full"
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div className="flex items-center gap-3 bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700">
-                                        <div className="flex-1">
-                                            <p className="text-[10px] text-slate-400 font-bold uppercase mb-1 leading-tight">{language === 'id' ? 'Tgl Jatuh Tempo' : 'Due day'} <br />{language === 'id' ? 'tiap bulan' : 'every month'}</p>
-                                            <select
-                                                value={dueDay}
-                                                onChange={(e) => setDueDay(parseInt(e.target.value))}
-                                                className="bg-transparent border-none p-0 text-sm font-bold focus:ring-0 w-full dark:text-slate-100"
-                                            >
-                                                {[...Array(31)].map((_, i) => (
-                                                    <option key={i + 1} value={i + 1}>{i + 1}</option>
-                                                ))}
-                                            </select>
-                                        </div>
-                                    </div>
-
-                                    <div className="flex items-center gap-3 bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700">
-                                        <div className="flex-1">
-                                            <p className="text-[10px] text-slate-400 font-bold uppercase mb-1 leading-tight">{language === 'id' ? 'Durasi' : 'Duration'} <br />({language === 'id' ? 'Sisa Bulan' : 'Months Left'})</p>
-                                            <input
-                                                type="number"
-                                                value={monthsLeft}
-                                                onChange={(e) => setMonthsLeft(parseInt(e.target.value))}
-                                                min="1"
-                                                className="bg-transparent border-none p-0 text-sm font-bold focus:ring-0 w-full dark:text-slate-100"
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
                         </div>
 
+                        {/* Footer Submit */}
                         <div className="p-4 bg-slate-50 dark:bg-slate-900/50 border-t border-slate-100 dark:border-slate-800">
                             <button
                                 onClick={handleAddDebt}

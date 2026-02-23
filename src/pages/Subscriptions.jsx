@@ -84,8 +84,10 @@ const Subscriptions = () => {
     return (
         <div className="min-h-screen bg-slate-50 dark:bg-slate-900 font-display pb-28 transition-colors duration-300">
             {/* Header Hero - Matches Debt.jsx perfectly */}
-            <div className="p-4 pt-6 bg-cyan-600 rounded-b-3xl text-white shadow-lg shadow-cyan-600/20 mb-6 relative overflow-hidden">
+            <div id="tour-bills-header" className="p-4 pt-6 bg-cyan-600 rounded-b-3xl text-white shadow-lg shadow-cyan-600/20 mb-6 relative overflow-hidden">
+                {/* Abstract Pattern Decoration */}
                 <div className="absolute top-0 right-0 -mr-8 -mt-8 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
+                <div className="absolute bottom-0 left-0 -ml-8 -mb-8 w-24 h-24 bg-white/5 rounded-full blur-xl"></div>
                 <div className="relative z-10 flex justify-between items-start mb-4">
                     <p className="text-cyan-100 text-sm font-medium">{language === 'id' ? 'Estimasi Biaya Bulanan' : 'Estimated Monthly Cost'}</p>
                     <button
@@ -97,7 +99,11 @@ const Subscriptions = () => {
                     </button>
                 </div>
                 <div className="relative z-10">
-                    <h2 className="text-4xl font-bold">{formatMoney(totalMonthlyCost)}</h2>
+                    <h2 className="text-4xl font-bold mt-1">{formatMoney(totalMonthlyCost)}</h2>
+                    <div className="mt-2 flex items-center gap-1 text-xs bg-white/20 w-fit px-2 py-1 rounded-full text-white">
+                        <span className="material-symbols-outlined text-[14px]">calendar_month</span>
+                        <span>{language === 'id' ? 'Diperbarui setiap bulan' : 'Renews monthly'}</span>
+                    </div>
                 </div>
             </div>
 
