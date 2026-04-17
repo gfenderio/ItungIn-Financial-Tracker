@@ -15,10 +15,16 @@ import TransactionDetail from './pages/TransactionDetail';
 import Profile from './pages/Profile';
 import AppTourOverlay from './components/AppTourOverlay';
 import PremiumTourOverlay from './components/PremiumTourOverlay';
+import CustomAlert from './components/CustomAlert';
+import CustomConfirm from './components/CustomConfirm';
+import OnboardingModal from './components/OnboardingModal';
 
 function App() {
     return (
         <div className="font-display">
+            <OnboardingModal />
+            <CustomAlert />
+            <CustomConfirm />
             <AppTourOverlay />
             <PremiumTourOverlay />
             <Routes>

@@ -1,4 +1,7 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
+import { Capacitor } from '@capacitor/core';
+import { AdMob } from '@capacitor-community/admob';
+import { LocalNotifications } from '@capacitor/local-notifications';
 
 const AppContext = createContext();
 
@@ -35,21 +38,16 @@ export const AppProvider = ({ children }) => {
         }
     });
 
-    const [isPremium, setIsPremium] = useState(() => {
+    const [hasLifetimePremium, setHasLifetimePremium] = useState(() => {
         try {
-            const savedUnlockTime = localStorage.getItem('premiumUnlockTime');
-            if (savedUnlockTime) {
-                const unlockTime = JSON.parse(savedUnlockTime);
-                if (Date.now() - unlockTime > 24 * 60 * 60 * 1000) {
-                    return false;
-                }
-            }
-            const saved = localStorage.getItem('isPremium');
+            const saved = localStorage.getItem('hasLifetimePremium');
             return saved ? JSON.parse(saved) : false;
         } catch (e) {
             return false;
         }
     });
+
+    const isPremium = hasLifetimePremium || (premiumUnlockTime !== null && (Date.now() - premiumUnlockTime < 3 * 60 * 60 * 1000));
 
     const [notifications, setNotifications] = useState(() => {
         try {
@@ -145,6 +143,84 @@ export const AppProvider = ({ children }) => {
         }
     });
 
+    // --- NATIVE PLUGINS INIT ---
+    useEffect(() => {
+        if (Capacitor.isNativePlatform()) {
+            AdMob.initialize({ initializeForTesting: true }).then(() => {
+                AdMob.addListener('onRewardedVideoAdReward', (reward) => {
+                    const unlockTime = Date.now();
+                    setPremiumUnlockTime(unlockTime);
+                    localStorage.setItem('premiumUnlockTime', JSON.stringify(unlockTime));
+                    setAlertConfig({ show: true, message: 'ItungIn Plus Unlocked (3 Hours)', type: 'success' });
+                });
+            }).catch(e => console.error(e));
+
+            LocalNotifications.requestPermissions();
+
+            if (window.CdvPurchase) {
+                const { store, ProductType, Platform } = window.CdvPurchase;
+                store.register({
+                    id: 'itungin_plus_lifetime',
+                    type: ProductType.NON_CONSUMABLE,
+                    platform: Platform.GOOGLE_PLAY
+                });
+                store.when().approved(p => p.verify()).verified(p => p.finish()).updated(p => {
+                    if (p.owned) {
+                        setHasLifetimePremium(true);
+                        localStorage.setItem('hasLifetimePremium', 'true');
+                    }
+                });
+                store.initialize([Platform.GOOGLE_PLAY]);
+            }
+        }
+    }, []);
+
+    const showRewardedAd = async () => {
+        if (Capacitor.isNativePlatform()) {
+            try {
+                await AdMob.prepareRewardVideoAd({ adId: 'ca-app-pub-3940256099942544/5224354917', isTesting: true });
+                await AdMob.showRewardVideoAd();
+            } catch (error) {
+                console.error(error);
+                setAlertConfig({ show: true, message: 'Failed to load Video Ad', type: 'error' });
+            }
+        } else {
+            const unlockTime = Date.now();
+            setPremiumUnlockTime(unlockTime);
+            localStorage.setItem('premiumUnlockTime', JSON.stringify(unlockTime));
+            setAlertConfig({ show: true, message: '[WEB MOCK] ItungIn Plus Unlocked (3 Hours)', type: 'success' });
+        }
+    };
+
+    const purchaseLifetime = () => {
+        if (Capacitor.isNativePlatform() && window.CdvPurchase) {
+            const product = window.CdvPurchase.store.get('itungin_plus_lifetime');
+            if (product) {
+                window.CdvPurchase.store.order(product.getOffer());
+            } else {
+                setAlertConfig({ show: true, message: 'Product not found', type: 'error' });
+            }
+        } else {
+            setHasLifetimePremium(true);
+            localStorage.setItem('hasLifetimePremium', 'true');
+            setAlertConfig({ show: true, message: '[WEB MOCK] Lifetime Premium Purchased!', type: 'success' });
+            setTimeout(() => window.dispatchEvent(new CustomEvent('start-premium-tour')), 500);
+        }
+    };
+
+    const pushNativeNotification = async (title, body, codeId) => {
+        if (Capacitor.isNativePlatform()) {
+            try {
+                await LocalNotifications.schedule({
+                    notifications: [
+                        { title, body, id: Math.abs(codeId), schedule: { at: new Date(Date.now() + 1000) } }
+                    ]
+                });
+            } catch (e) { console.error(e); }
+        }
+    };
+    // --- END NATIVE PLUGINS ---
+
     // Persistence Effects
     useEffect(() => {
         try {
@@ -195,13 +271,7 @@ export const AppProvider = ({ children }) => {
         }
     }, [userProfile]);
 
-    useEffect(() => {
-        try {
-            localStorage.setItem('isPremium', JSON.stringify(isPremium));
-        } catch (error) {
-            console.error("Failed to save premium state:", error);
-        }
-    }, [isPremium]);
+    // Persistence for isPremium handled natively via IAP status
 
     useEffect(() => {
         try {
@@ -215,20 +285,20 @@ export const AppProvider = ({ children }) => {
         }
     }, [premiumUnlockTime]);
 
-    // Premium Expiry Checker
+    // Premium Expiry Checker (3 hours for video ads)
     useEffect(() => {
-        if (!isPremium || !premiumUnlockTime) return;
+        if (!premiumUnlockTime) return;
 
         const checkExpiry = () => {
-            if (Date.now() - premiumUnlockTime > 24 * 60 * 60 * 1000) {
-                setIsPremium(false);
+            if (Date.now() - premiumUnlockTime > 3 * 60 * 60 * 1000) {
                 setPremiumUnlockTime(null);
+                localStorage.removeItem('premiumUnlockTime');
             }
         };
 
         const interval = setInterval(checkExpiry, 60000); // Check every minute
         return () => clearInterval(interval);
-    }, [isPremium, premiumUnlockTime]);
+    }, [premiumUnlockTime]);
 
     useEffect(() => {
         try {
@@ -482,22 +552,19 @@ export const AppProvider = ({ children }) => {
                 title,
                 message,
                 type,
-                onConfirm: () => resolve(true)
-            });
-            // Overriding the default backdrop click to reject the promise
-            const oldHideConfirm = hideConfirm;
-            setConfirmConfig(prev => ({
-                ...prev,
+                onConfirm: () => resolve(true),
                 onCancel: () => resolve(false)
-            }));
+            });
         });
     };
 
     const hideConfirm = () => {
-        if (confirmConfig.onCancel) {
-            confirmConfig.onCancel();
-        }
-        setConfirmConfig(prev => ({ ...prev, show: false, onConfirm: null, onCancel: null }));
+        setConfirmConfig(prev => {
+            if (prev.onCancel) {
+                prev.onCancel();
+            }
+            return { ...prev, show: false, onConfirm: null, onCancel: null };
+        });
     };
 
     const markNotificationAsRead = (id) => {
@@ -547,12 +614,10 @@ export const AppProvider = ({ children }) => {
         setHasCompletedOnboarding(false);
         setUserProfile({ name: '', email: '' });
         setLanguage(null);
-        setIsPremium(false);
         localStorage.removeItem('hasCompletedTour');
         localStorage.removeItem('language');
         localStorage.removeItem('hasCompletedOnboarding');
         localStorage.removeItem('userProfile');
-        localStorage.removeItem('isPremium');
     };
 
     const resetDemoDataForTour = () => {
@@ -759,8 +824,8 @@ export const AppProvider = ({ children }) => {
     };
 
     const unlockPremium = () => {
-        setIsPremium(true);
-        setPremiumUnlockTime(Date.now());
+        setHasLifetimePremium(true);
+        localStorage.setItem('hasLifetimePremium', 'true');
     };
 
     return (
@@ -813,7 +878,11 @@ export const AppProvider = ({ children }) => {
             deleteSavingGoal,
             allocateFundsToGoal,
             isPremium,
-            unlockPremium
+            unlockPremium,
+            showRewardedAd,
+            purchaseLifetime,
+            hasLifetimePremium,
+            pushNativeNotification
         }}>
             {children}
         </AppContext.Provider>

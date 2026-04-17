@@ -57,6 +57,11 @@ export default function Savings() {
         const value = parseFloat(topUpAmount.replace(/\D/g, ''));
         if (isNaN(value) || value <= 0) return;
 
+        if (value >= 1000000000000) {
+            showAlert(language === 'id' ? 'Nominal maksimal tidak boleh menyentuh 1 Triliun' : 'Maximum value cannot reach 1 Trillion', 'error');
+            return;
+        }
+
         const currentBal = calculateBalance();
         if (value > currentBal) {
             showAlert(language === 'id' ? 'Saldo aktif tidak cukup!' : 'Insufficient active balance!', 'error');

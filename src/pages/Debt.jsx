@@ -46,6 +46,12 @@ const Debt = () => {
             showAlert(language === 'id' ? 'Silakan masukkan judul dan jumlah.' : 'Please enter title and amount.', 'error');
             return;
         }
+
+        if (parseFloat(amount) >= 1000000000000) {
+            showAlert(language === 'id' ? 'Nominal maksimal tidak boleh menyentuh 1 Triliun' : 'Maximum value cannot reach 1 Trillion', 'error');
+            return;
+        }
+
         const newDebt = {
             id: Date.now(),
             title: title,

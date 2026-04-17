@@ -45,6 +45,11 @@ export default function AddSavingGoalModal({ isOpen, onClose, goalToEdit = null 
             return;
         }
 
+        if (numTargetAmount >= 1000000000000) {
+            showAlert(language === 'id' ? 'Nominal maksimal tidak boleh menyentuh 1 Triliun' : 'Maximum value cannot reach 1 Trillion', 'error');
+            return;
+        }
+
         if (goalToEdit) {
             updateSavingGoal({
                 ...goalToEdit,

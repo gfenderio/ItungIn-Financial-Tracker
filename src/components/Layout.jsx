@@ -1,9 +1,6 @@
 import React, { useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useApp } from '../contexts/AppContext';
-import CustomAlert from './CustomAlert';
-import CustomConfirm from './CustomConfirm';
-import OnboardingModal from './OnboardingModal';
 import NotificationsPanel from './NotificationsPanel';
 import AppTourOverlay from './AppTourOverlay';
 
@@ -21,9 +18,6 @@ const Layout = () => {
 
     return (
         <div className="bg-slate-50 dark:bg-slate-900 font-display text-slate-900 dark:text-slate-100 min-h-screen flex flex-col transition-colors duration-300">
-            <OnboardingModal />
-            <CustomAlert />
-            <CustomConfirm />
             {/* Top Header Navigation */}
             <header className="sticky top-0 z-50 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md px-4 py-3 flex items-center justify-between border-b border-slate-200 dark:border-slate-800">
                 <div

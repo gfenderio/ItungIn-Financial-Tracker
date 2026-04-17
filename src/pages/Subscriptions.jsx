@@ -30,8 +30,18 @@ const Subscriptions = () => {
 
     const handleAddSubscription = () => {
         const val = parseFloat(amount);
-        if (!title || isNaN(val) || val <= 0 || !nextDueDate) {
+        if (!title || isNaN(val) || !nextDueDate) {
             showAlert(language === 'id' ? 'Lengkapi form dengan benar.' : 'Please complete the form properly.', 'error');
+            return;
+        }
+
+        if (val <= 0) {
+            showAlert(language === 'id' ? 'Masukkan jumlah yang valid dan lebih dari 0' : 'Please enter a valid amount greater than 0', 'error');
+            return;
+        }
+
+        if (val >= 1000000000000) {
+            showAlert(language === 'id' ? 'Nominal maksimal tidak boleh menyentuh 1 Triliun' : 'Maximum value cannot reach 1 Trillion', 'error');
             return;
         }
 

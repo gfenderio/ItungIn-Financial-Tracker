@@ -1,64 +1,88 @@
-# ItungIn Financial Tracker
+# 💰 ItungIn Financial Tracker (v2.0)
 
-ItungIn is a modern, beautifully designed Personal Finance tracking web application built with React and styled with Tailwind CSS. This application offers a seamless experience for managing daily transactions, comprehensively tracking active debts, and evaluating your overall financial health.
+[![React](https://img.shields.io/badge/React-20232a?style=for-the-badge&logo=react&logoColor=61DAFB)](https://reactjs.org/)
+[![Vite](https://img.shields.io/badge/vite-%23646CFF.svg?style=for-the-badge&logo=vite&logoColor=white)](https://vitejs.dev/)
+[![TailwindCSS](https://img.shields.io/badge/tailwindcss-%2338B2AC.svg?style=for-the-badge&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
+[![Capacitor](https://img.shields.io/badge/Capacitor-119EFF?style=for-the-badge&logo=Capacitor&logoColor=white)](https://capacitorjs.com/)
 
-## 🌟 Features
+ItungIn is a premium, high-performance Personal Finance application designed for modern users. Re-engineered for mobile-first experiences with a focus on stunning aesthetics, robust debt management, and seamless onboarding flows.
 
-*   **Smart Dashboard**: A dynamic dashboard providing a bird's-eye view of your finances.
-    *   **Interactive Donut Chart**: Proportional SVG-based donut charts visualizing your Income vs. Expenses, complete with smooth drawing animations.
-    *   **Time Period Filtering**: Easily filter transactions by 'This Month', 'Last Month', 'Month to Date', or via a custom Date Range picker.
-    *   **Hero Balance**: A bold, curved hero section immediately showing your Total Balance and percentage change from the previous month.
-*   **Intuitive Transaction Logging**:
-    *   Fast, modal-based transaction entry directly from the Dashboard.
-    *   Categorize entries with visual icons separating Expenses (e.g., Food, Utilities, Shopping) and Income.
-    *   Robust validation ensuring sub-zero entries are caught immediately via app-wide custom alert popups.
-*   **Comprehensive Debt Management**:
-    *   Track active obligations across Bank Loans, Personal Debts, and Credit Cards with distinct visual indicators.
-    *   **Debt-To-Income (DTI) Tracker**: An integrated widget dynamically calculating your monthly debt obligations against your income, complete with color-coded health indicators (Good/Warning/Danger).
-    *   **Debt Payment Engine**: Click on any active debt to view a detailed breakdown (Total Liability, Monthly Installment, Months Left) and execute a payment that automatically deducts from your debt balance and updates your main transaction ledger simultaneously.
-    *   **Automated Reminders**: Unobtrusive application notifications warn you if a debt payment is due within 5 days and hasn't been paid this month.
-*   **Cross-App Localization**: Instantly toggle the interface language between **English** and **Indonesian** directly from the AppContext.
-*   **Dark Mode Ready**: A meticulously crafted dark theme (`dark:bg-slate-900`) for low-light environments, easily toggled from the global navigation bar.
+---
 
-## 🚀 Technology Stack
+## ✨ Key Features
 
-*   **Frontend Library**: React (Context API for State Management)
-*   **Styling**: Tailwind CSS (Utility-first CSS framework with custom `font-display` configuration)
-*   **Routing**: React Router DOM (v6)
-*   **Icons**: Google Material Symbols
-*   **Persistence**: LocalStorage (for persisting user settings, transactions, and debts across sessions)
+### 🚀 Advanced Onboarding & Auth
+- **Hybrid Auth Flow**: Choose between high-security **Google Sign-In** for cloud sync or **Guest Mode** for local-first privacy.
+- **Dynamic Profile Management**: Smart profile UI that adapts based on authentication status. Google users enjoy cloud synchronization alerts, while Guests get focused local tracking.
+- **Interactive App Tour**: A comprehensive, step-by-step interactive onboarding tour (powered by `driver.js`) that guides users through every core feature.
+
+### 💎 ItungIn Plus (Premium Features)
+- **Deep Analytics**: Visualize your financial trends over months or years with interactive cash-flow charts.
+- **Goal-Based Savings**: Create and track multiple savings goals with automated balance deductions and progress tracking.
+- **Advanced Budgeting**: Set category-specific limits with real-time visual warnings (Safe/Warning/Exceeded).
+
+### 🏦 Core Financial Engine
+- **Smart Dashboard**: Real-time balance updates, donut-chart visualizations, and quick-action transaction entries.
+- **Robust Debt Tracker**: Comprehensive management for Bank Loans, Personal Debts, and more. Includes a **Debt-to-Income (DTI)** health indicator.
+- **Recurring Bills**: Track subscriptions (Netflix, Spotify, etc.) with automatic monthly rolling and notification reminders.
+
+---
+
+## 📱 Mobile Migration
+
+ItungIn is powered by **Capacitor**, enabling a native-like experience on Android:
+- **Native UI/UX**: Optimized performance for smooth mobile interactions.
+- **Local Storage Persistence**: Fast, reliable data access even without internet connectivity.
+- **Responsive Layouts**: Meticulously crafted using Tailwind CSS v4 for perfect rendering on any screen size.
+
+---
+
+## 🛠 Technology Stack
+
+- **Core**: React 19 + Vite 7 (Latest generation performance)
+- **Styling**: Tailwind CSS v4.2 (Utility-first, highly customized)
+- **Native Bridge**: Capacitor (Android Migration Path)
+- **Animations**: CSS transitions + Custom SVG keyframes
+- **State**: React Context API (Predictable global state)
+- **Tutorials**: Driver.js (Customized for React Portals)
+
+---
 
 ## 💻 Getting Started
 
 ### Prerequisites
-*   Node.js (v16+)
-*   npm or yarn
+- Node.js (v18+)
+- Android Studio (for mobile build)
 
 ### Installation
-1.  Clone the repository:
+1.  **Clone & Install**:
     ```bash
-    git clone https://github.com/yourusername/ItungIn-Financial-Tracker.git
+    git clone https://github.com/gfenderio/ItungIn-Financial-Tracker.git
     cd ItungIn-Financial-Tracker
-    ```
-2.  Install dependencies:
-    ```bash
     npm install
     ```
-3.  Start the development server:
+2.  **Web Development**:
     ```bash
     npm run dev
     ```
-4.  Open your browser and navigate to the localhost port provided (usually `http://localhost:5173/`).
+3.  **Android Sync**:
+    ```bash
+    npx cap sync android
+    npx cap open android
+    ```
+
+---
 
 ## 📁 Project Structure
 
-*   `src/components/`: Reusable UI elements (Layout, Custom alerts, Modals).
-*   `src/contexts/`: Centralized state management (`AppContext.jsx`) handling transactions, debts, notification dispatching, theme, and localization.
-*   `src/pages/`: Core application views (Dashboard, Debt, Profile, Transactions).
+- `src/components/`: Modular UI components (Onboarding, Tour Overlays, Custom Modals).
+- `src/contexts/`: Global state management (`AppContext.jsx`) handling transaction logic and auth state.
+- `src/pages/`: Feature-rich views including the **Premium Hub**, **Analytics**, and **Debt Tracker**.
+- `android/`: Native Android platform bridge and configuration.
 
-## 🎨 Design Philosophy
+## 📄 License
 
-ItungIn prioritizes aesthetics alongside functionality. The UI avoids generic blocks in favor of `rounded-3xl` cards, subtle drop shadows, blurred backdrops (`backdrop-blur-md`), micro-animations on hover states, and considered typography. The specific color palettes (e.g., Indigo for Debt, Emerald for Income, Red for Expenses) ensure information is parsed quickly and pleasantly.
+Distributed under the MIT License. See `LICENSE` for more information.
 
 ---
-*Built to make managing money intuitive and visually rewarding.*
+*Developed with ❤️ to empower your financial freedom.*

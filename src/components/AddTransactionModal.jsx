@@ -50,6 +50,11 @@ const AddTransactionModal = ({ isOpen, onClose }) => {
             return;
         }
 
+        if (value >= 1000000000000) {
+            showAlert(language === 'id' ? 'Nominal maksimal tidak boleh menyentuh 1 Triliun' : 'Maximum value cannot reach 1 Trillion', 'error');
+            return;
+        }
+
         if (type === 'Expense') {
             const budget = budgets?.find(b => b.category === category.name);
             if (budget && budget.limit > 0) {

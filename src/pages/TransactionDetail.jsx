@@ -57,6 +57,11 @@ const TransactionDetail = () => {
             return;
         }
 
+        if (val >= 1000000000000) {
+            showAlert(language === 'id' ? 'Nominal maksimal tidak boleh menyentuh 1 Triliun' : 'Maximum value cannot reach 1 Trillion', 'error');
+            return;
+        }
+
         const finalAmount = type === 'expense' ? -Math.abs(val) : Math.abs(val);
 
         updateTransaction({

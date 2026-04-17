@@ -3,18 +3,17 @@ import { useNavigate } from 'react-router-dom';
 import { useApp } from '../contexts/AppContext';
 
 export default function Premium() {
-    const { isPremium, unlockPremium, language, showAlert } = useApp();
+    const { isPremium, language, showAlert, showRewardedAd, purchaseLifetime, hasLifetimePremium } = useApp();
     const navigate = useNavigate();
 
-    const handleUnlock = () => {
-        // Simulate ad watch or purchase
+    const handleAdClick = () => {
         showAlert(language === 'id' ? 'Memuat iklan...' : 'Loading ad...', 'info');
-        setTimeout(() => {
-            unlockPremium();
-            showAlert(language === 'id' ? 'Berhasil! Fitur Premium Terbuka.' : 'Success! Premium Features Unlocked.', 'success');
-            // Refresh tour state so unlocked tour can play
-            localStorage.removeItem('tour_premium_completed');
-        }, 1500);
+        showRewardedAd();
+    };
+
+    const handleIapClick = () => {
+        showAlert(language === 'id' ? 'Memproses pembelian...' : 'Processing purchase...', 'info');
+        purchaseLifetime();
     };
 
     if (!isPremium) {
@@ -72,13 +71,25 @@ export default function Premium() {
                             </li>
                         </ul>
 
-                        <button
-                            onClick={handleUnlock}
-                            className="w-full relative overflow-hidden bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-500 hover:to-orange-600 text-white font-bold py-4 rounded-xl shadow-lg transition-transform active:scale-[0.98] flex items-center justify-center gap-2 group"
-                        >
-                            <span className="material-symbols-outlined icon-filled group-hover:rotate-12 transition-transform">play_circle</span>
-                            {language === 'id' ? 'Tonton Iklan untuk Buka' : 'Watch Ad to Unlock'}
-                        </button>
+                        <div className="flex flex-col gap-3">
+                            <button
+                                onClick={handleAdClick}
+                                className="w-full relative overflow-hidden bg-white dark:bg-slate-700 text-slate-800 dark:text-white border-2 border-amber-400 dark:border-amber-500 font-bold py-4 rounded-xl shadow-md transition-transform active:scale-[0.98] flex items-center justify-center gap-2 group hover:bg-amber-50 dark:hover:bg-slate-600"
+                            >
+                                <span className="material-symbols-outlined text-amber-500 group-hover:rotate-12 transition-transform">slow_motion_video</span>
+                                {language === 'id' ? 'Tonton Iklan (Akses 3 Jam)' : 'Watch Ad (3 Hours Access)'}
+                            </button>
+
+                            <button
+                                onClick={handleIapClick}
+                                className="w-full relative overflow-hidden bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-500 hover:to-orange-600 text-white font-bold py-4 rounded-xl shadow-lg transition-transform active:scale-[0.98] flex items-center justify-center gap-2 group"
+                            >
+                                <span className="material-symbols-outlined icon-filled group-hover:-translate-y-1 transition-transform">workspace_premium</span>
+                                <div className="flex flex-col items-start leading-none">
+                                    <span>{language === 'id' ? 'Buka Permanen (Lifetime)' : 'Unlock Permanently (Lifetime)'}</span>
+                                </div>
+                            </button>
+                        </div>
                     </div>
                 </main>
             </div>
@@ -115,6 +126,18 @@ export default function Premium() {
                     </button>
                 </div>
             </header>
+
+            {!hasLifetimePremium && (
+                <div className="mx-4 mb-4 bg-gradient-to-r from-amber-400 to-orange-500 rounded-2xl p-4 shadow-lg flex items-center justify-between">
+                    <div>
+                        <h4 className="text-white font-bold text-sm">{language === 'id' ? 'Akses Sementara Aktif' : 'Temporary Access Active'}</h4>
+                        <p className="text-white/80 text-xs mt-0.5">{language === 'id' ? 'Beli Lifetime untuk buka selamanya.' : 'Buy Lifetime to keep it forever.'}</p>
+                    </div>
+                    <button onClick={handleIapClick} className="bg-white text-orange-500 font-bold text-xs px-3 py-2 rounded-lg shadow-sm hover:scale-105 transition-transform active:scale-95">
+                        {language === 'id' ? 'Beli Lifetime' : 'Buy Lifetime'}
+                    </button>
+                </div>
+            )}
 
             <main className="flex-1 px-4 space-y-4 pb-24">
                 <div

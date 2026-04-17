@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useApp } from '../contexts/AppContext';
 
 export default function Budgets() {
-    const { budgets, setBudgets, transactions, language } = useApp();
+    const { budgets, setBudgets, transactions, language, showAlert } = useApp();
     const navigate = useNavigate();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingBudget, setEditingBudget] = useState(null);
@@ -47,6 +47,11 @@ export default function Budgets() {
         e.preventDefault();
         const numericLimit = parseInt(limit.toString().replace(/\D/g, ''), 10);
         if (isNaN(numericLimit) || numericLimit <= 0) return;
+
+        if (numericLimit >= 1000000000000) {
+            showAlert(language === 'id' ? 'Nominal maksimal tidak boleh menyentuh 1 Triliun' : 'Maximum value cannot reach 1 Trillion', 'error');
+            return;
+        }
 
         if (editingBudget) {
             setBudgets(prev => prev.map(b => b.id === editingBudget.id ? { ...b, category, limit: numericLimit } : b));

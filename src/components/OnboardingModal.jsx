@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../contexts/AppContext';
+import TermsModal from './TermsModal';
 
 const OnboardingModal = () => {
     const { hasCompletedOnboarding, completeOnboarding, language, setLanguage, toggleDarkMode, darkMode, showAlert } = useApp();
@@ -12,6 +13,8 @@ const OnboardingModal = () => {
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [optIn, setOptIn] = useState(true);
+    const [agreeTnC, setAgreeTnC] = useState(false);
+    const [showTnC, setShowTnC] = useState(false);
 
     if (hasCompletedOnboarding) return null;
 
@@ -21,35 +24,6 @@ const OnboardingModal = () => {
     };
 
     const handleNext = () => setStep(2);
-
-    const validateEmail = (email) => {
-        return String(email)
-            .toLowerCase()
-            .match(
-                /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|.(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/
-            );
-    };
-
-    const handleFinish = () => {
-        if (!name.trim()) {
-            showAlert(language === 'id' ? 'Nama Panggilan tidak boleh kosong.' : 'Preferred Name cannot be empty.', 'error');
-            return;
-        }
-
-        if (!email || !validateEmail(email)) {
-            showAlert(language === 'id' ? 'Format email tidak valid atau kosong.' : 'Email is empty or invalid.', 'error');
-            return;
-        }
-
-        completeOnboarding({
-            name: name.trim(),
-            email: email.trim(),
-            marketingOptIn: optIn
-        });
-
-        // Force routing back to the main dashboard so the tour starts exactly where it should
-        navigate('/');
-    };
 
     return (
         <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center">
@@ -146,78 +120,84 @@ const OnboardingModal = () => {
                         <div className="flex flex-col animate-in slide-in-from-right-4 duration-500">
                             <div className="mb-6">
                                 <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white mb-2 tracking-tight">
-                                    {language === 'id' ? 'Profil Anda' : 'Your Profile'}
+                                    {language === 'id' ? 'Satu Langkah Lagi' : 'One More Step'}
                                 </h2>
                                 <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-                                    {language === 'id' ? 'Mari personalisasi pengalaman ItungIn Anda.' : 'Let\'s personalize your ItungIn experience.'}
+                                    {language === 'id' 
+                                        ? 'Pilih metode masuk Anda. Mode Guest tidak mendukung fitur pencadangan Awan.' 
+                                        : 'Choose your sign-in method. Guest Mode does not support Cloud Sync.'}
                                 </p>
                             </div>
 
-                            <div className="space-y-4 mb-6">
-                                <div>
-                                    <label className="block text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
-                                        {language === 'id' ? 'Nama Panggilan' : 'Preferred Name'}
-                                    </label>
-                                    <div className="relative">
-                                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                            <span className="material-symbols-outlined text-slate-400 text-[18px] sm:text-[20px]">person</span>
-                                        </div>
+                            <div className="flex flex-col space-y-4 mb-6">
+                                <div className="flex items-start gap-3 bg-primary/5 dark:bg-primary/10 p-4 rounded-xl border border-primary/20 dark:border-primary/30">
+                                    <label className="relative flex items-center justify-center mt-0.5 shrink-0 cursor-pointer">
                                         <input
-                                            type="text"
-                                            value={name}
-                                            onChange={(e) => setName(e.target.value)}
-                                            placeholder="John Doe"
-                                            className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl pl-12 pr-4 py-3 sm:py-4 text-xs sm:text-sm font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:font-normal placeholder:text-slate-400"
+                                            type="checkbox"
+                                            checked={agreeTnC}
+                                            onChange={(e) => setAgreeTnC(e.target.checked)}
+                                            className="peer appearance-none w-5 h-5 border-2 border-primary/50 rounded-md checked:bg-primary checked:border-primary transition-colors cursor-pointer"
                                         />
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <label className="block text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
-                                        {language === 'id' ? 'Alamat Email' : 'Email Address'}
+                                        <span className="material-symbols-outlined absolute text-white text-[16px] scale-0 peer-checked:scale-100 transition-transform pointer-events-none">check</span>
                                     </label>
-                                    <div className="relative">
-                                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                            <span className="material-symbols-outlined text-slate-400 text-[18px] sm:text-[20px]">mail</span>
-                                        </div>
-                                        <input
-                                            type="email"
-                                            value={email}
-                                            onChange={(e) => setEmail(e.target.value)}
-                                            placeholder="john@example.com"
-                                            className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl pl-12 pr-4 py-3 sm:py-4 text-xs sm:text-sm font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:font-normal placeholder:text-slate-400"
-                                        />
-                                    </div>
-                                    <label className="flex items-start gap-3 mt-4 cursor-pointer group">
-                                        <div className="relative flex items-center justify-center mt-0.5 shrink-0">
-                                            <input
-                                                type="checkbox"
-                                                checked={optIn}
-                                                onChange={(e) => setOptIn(e.target.checked)}
-                                                className="peer appearance-none w-4 h-4 sm:w-5 sm:h-5 border-2 border-slate-300 dark:border-slate-600 rounded-md checked:bg-primary checked:border-primary transition-colors cursor-pointer"
-                                            />
-                                            <span className="material-symbols-outlined absolute text-white text-[14px] sm:text-[16px] scale-0 peer-checked:scale-100 transition-transform pointer-events-none">check</span>
-                                        </div>
-                                        <span className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-300 transition-colors leading-snug">
-                                            {language === 'id'
-                                                ? 'Saya setuju menerima email tips keuangan dan pembaruan sistem.'
-                                                : 'I agree to receive financial tips and system updates.'}
-                                        </span>
-                                    </label>
+                                    <span className="text-[11px] sm:text-xs text-slate-700 dark:text-slate-300 leading-relaxed font-medium">
+                                        {language === 'id' ? 'Saya telah membaca dan menyetujui ' : 'I have read and agree to the '}
+                                        <button 
+                                            onClick={() => setShowTnC(true)}
+                                            className="font-bold underline text-primary hover:text-primary-dark focus:outline-none"
+                                        >
+                                            {language === 'id' ? 'Syarat & Ketentuan' : 'Terms & Conditions'}
+                                        </button>
+                                    </span>
                                 </div>
                             </div>
 
                             <button
-                                onClick={handleFinish}
-                                className="w-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100 h-12 sm:h-14 rounded-2xl font-black font-display shadow-lg shadow-slate-900/10 dark:shadow-white/10 transition-all flex items-center justify-center gap-2 active:scale-95"
+                                onClick={() => {
+                                    if (!agreeTnC) {
+                                        showAlert(language === 'id' ? 'Mohon centang persetujuan Syarat & Ketentuan.' : 'Please agree to the Terms & Conditions.', 'warning');
+                                        return;
+                                    }
+                                    completeOnboarding({ name: 'Google User', email: 'user@gmail.com', isGuest: false });
+                                    showAlert(language === 'id' ? 'Berhasil masuk dengan Google (Mock)' : 'Successfully signed in with Google (Mock)', 'success');
+                                    navigate('/');
+                                }}
+                                className="w-full bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-2 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 h-14 rounded-2xl font-bold transition-all flex items-center justify-center gap-3 active:scale-95 mb-4 shadow-sm"
                             >
-                                <span>{language === 'id' ? 'Masuk ke Dashboard' : 'Enter Dashboard'}</span>
-                                <span className="material-symbols-outlined text-[18px]">verified</span>
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M22.56 12.25C22.56 11.47 22.49 10.72 22.36 10H12V14.26H17.92C17.66 15.63 16.88 16.78 15.68 17.55V20.34H19.25C21.34 18.42 22.56 15.6 22.56 12.25Z" fill="#4285F4"/>
+                                    <path d="M12 23C14.97 23 17.46 22.02 19.25 20.34L15.68 17.55C14.71 18.2 13.45 18.59 12 18.59C9.18 18.59 6.8 16.69 5.96 14.12H2.3V16.96C4.08 20.5 7.74 23 12 23Z" fill="#34A853"/>
+                                    <path d="M5.96 14.12C5.74 13.47 5.62 12.75 5.62 12C5.62 11.25 5.74 10.53 5.96 9.88V7.04H2.3C1.56 8.51 1.13 10.2 1.13 12C1.13 13.8 1.56 15.49 2.3 16.96L5.96 14.12Z" fill="#FBBC05"/>
+                                    <path d="M12 5.41C13.62 5.41 15.06 5.95 16.2 7.01L19.33 3.88C17.45 2.13 14.97 1 12 1C7.74 1 4.08 3.5 2.3 7.04L5.96 9.88C6.8 7.31 9.18 5.41 12 5.41Z" fill="#EA4335"/>
+                                </svg>
+                                <span>{language === 'id' ? 'Masuk dengan Google' : 'Sign in with Google'}</span>
+                            </button>
+
+                            <button
+                                onClick={() => {
+                                    if (!agreeTnC) {
+                                        showAlert(language === 'id' ? 'Mohon centang persetujuan Syarat & Ketentuan.' : 'Please agree to the Terms & Conditions.', 'warning');
+                                        return;
+                                    }
+                                    completeOnboarding({ name: 'Guest', email: '', isGuest: true });
+                                    navigate('/');
+                                }}
+                                className="w-full bg-slate-100 dark:bg-slate-900 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 h-12 rounded-xl font-bold transition-all flex items-center justify-center gap-2 active:scale-95"
+                            >
+                                <span className="material-symbols-outlined text-lg">no_accounts</span>
+                                <span>{language === 'id' ? 'Teruskan sebagai Guest' : 'Continue as Guest'}</span>
                             </button>
                         </div>
                     )}
                 </div>
             </div>
+
+            <TermsModal 
+                isOpen={showTnC} 
+                onClose={() => setShowTnC(false)} 
+                onAgree={() => { setAgreeTnC(true); setShowTnC(false); }}
+                showAgreeButton={true}
+            />
         </div>
     );
 };

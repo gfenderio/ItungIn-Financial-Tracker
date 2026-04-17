@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { useApp } from '../contexts/AppContext';
 
 const CustomConfirm = () => {
@@ -28,8 +29,8 @@ const CustomConfirm = () => {
         confirmBtnClass = 'bg-orange-500 hover:bg-orange-600 shadow-orange-500/30';
     }
 
-    return (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+    return createPortal(
+        <div style={{ zIndex: 2147483647 }} className="fixed inset-0 flex items-center justify-center p-4">
             {/* Backdrop */}
             <div
                 className="absolute inset-0 bg-slate-900/50 dark:bg-slate-900/70 backdrop-blur-sm animate-in fade-in duration-200"
@@ -62,7 +63,7 @@ const CustomConfirm = () => {
                 </div>
 
             </div>
-        </div>
+        </div>, document.body
     );
 };
 
